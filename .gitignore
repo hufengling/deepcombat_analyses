@@ -1,0 +1,10 @@
+**/*.nii.gz
+**/*.nii
+**/*.mat
+**/*.mgh
+.ipynb_checkpoints/
+.ipynb_checkpoints/*
+data/
+.DS_Store
+
+.Rproj.user
