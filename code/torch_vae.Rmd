@@ -1,0 +1,85 @@
+---
+title: "Torch tutorial"
+output: html_document
+---
+
+# Packages
+```{r}
+library(torch)
+library(torchvision)
+library(tidyverse)
+library(reshape2)
+library(matlib)
+source("./code/utils.R")
+source("./code/data_loader.R")
+source("./code/modules_2.R")
+```
+
+# Preprocessing
+```{r}
+set.seed(20)
+raw <- read.csv("./data/raw.csv", header = F) %>% as.matrix()
+covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
+
+cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, covariates)[, -1]
+# dummyVars(~ SEX + DIAGNOSIS + AGE, .) %>% 
+# predict(newdata = covariates)
+batch <- model.matrix(~ manufac, covariates)[, -1] %>% as.matrix()
+# dummyVars(~ manufac, .) %>% 
+# predict(newdata = covariates)
+
+input_list <- list(data_raw = raw, cov = cov, batch = batch)
+
+resid_list <- input_list %>% 
+  split_train_test(0.9) %>% 
+  #standardize_data() %>% 
+  residualize_data()
+
+all_resid_list <- input_list %>% 
+  #standardize_data(is_split = F) %>% 
+  residualize_data(is_split = F)
+```
+
+# Create dataset and dataloader
+```{r}
+adni_ct <- adni_ct_dataset(all_resid_list, data_type = "all")
+adni_restyle <- adni_ct_dataset(all_resid_list, 
+                                data_type = "all",
+                                insert_custom_batch = TRUE,
+                                custom_batch = matrix(0, nrow = nrow(all_resid_list$data_raw)))
+adni_all_dl <- dataloader(adni_ct, batch_size = 100, shuffle = TRUE)
+```
+
+# Training
+```{r}
+vae_model <- vae_module(feature_dim = 62, 
+                        covariate_dim = 4, 
+                        latent_dim = 25, 
+                        n_batch = 1)
+vae_optimizer <- optim_adam(vae_model$parameters, lr = 0.001)
+
+trained <- train_nn(adni_all_dl, vae_model, vae_optimizer, n_epochs = 50, beta = .1)
+vae_model <- trained$model
+vae_optimizer <- trained$optimizer
+```
+
+```{r}
+adni_ct_output <- run_through_vae(adni_ct, vae_model, restyle = TRUE)
+adni_restyle_output <- run_through_vae(adni_restyle, vae_model, restyle = TRUE)
+
+raw <- as.matrix(adni_ct$data_raw)
+style_transfer_df <- as.data.frame(cbind(as.matrix(adni_restyle$batch), 
+                                         as.matrix(adni_restyle$new_batch))) %>% 
+  mutate(is_same = ifelse(V1 == V2, TRUE, FALSE))
+
+sum((adni_ct_output$vae_recon - raw)^2)
+sum((adni_restyle_output$vae_recon - raw)^2)
+
+sum(((adni_ct_output$vae_recon - raw)^2)[style_transfer_df$is_same, ])
+sum(((adni_restyle_output$vae_recon - raw)^2)[style_transfer_df$is_same, ])
+
+sum(((adni_ct_output$vae_recon - raw)^2)[!style_transfer_df$is_same, ])
+sum(((adni_restyle_output$vae_recon - raw)^2)[!style_transfer_df$is_same, ])
+
+sum((adni_ct_output$vae_latent_overall - adni_restyle_output$vae_latent_overall)^2)
+```

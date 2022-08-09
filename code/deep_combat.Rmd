@@ -1,0 +1,166 @@
+---
+title: "DeepCombat"
+output: html_document
+---
+
+# Packages
+```{r}
+library(torch)
+library(torchvision)
+library(tidyverse)
+library(reshape2)
+library(matlib)
+library(neuroCombat)
+source("./code/utils.R")
+source("./code/data_loader.R")
+source("./code/combat_module.R")
+source("./code/predictor_module.R")
+```
+
+# Preprocessing
+```{r}
+set.seed(20)
+raw <- read.csv("./data/raw.csv", header = F) %>% as.matrix()
+covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
+
+cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, covariates)[, -1]
+# dummyVars(~ SEX + DIAGNOSIS + AGE, .) %>% 
+# predict(newdata = covariates)
+batch <- model.matrix(~ manufac, covariates)[, -1] %>% as.matrix()
+# dummyVars(~ manufac, .) %>% 
+# predict(newdata = covariates)
+
+combat <- neuroCombat(t(raw), batch = batch, mod = cov, ref.batch = 0)
+
+input_list <- list(data_raw = raw, cov = cov, batch = batch)
+
+all_resid_list <- input_list %>% 
+  residualize_data(is_split = F)
+
+adni_ct <- adni_ct_dataset(all_resid_list, data_type = "all", 
+                           insert_new_batch = TRUE, new_batch = matrix(0, nrow = nrow(raw),
+                                                                             ncol = 1))
+adni_all_dl <- dataloader(adni_ct, batch_size = 64, shuffle = TRUE)
+```
+
+# Training VAE with covariates
+```{r}
+n_latent_dim <- 20
+vae_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, 
+                         n_hidden = 4, n_batch = 1, n_covariate = 4)
+vae_optim <- optim_adam(vae_model$parameters, lr = 0.001)
+
+trained <- train_nn(adni_all_dl, vae_model, vae_optim, 
+                    n_epochs = 50, beta_mse = 0.8, beta_l1 = 0.2, beta = 1)
+vae_model <- trained$model
+vae_optim <- trained$optimizer
+```
+
+# Train VAE w/o covariates
+```{r}
+n_latent_dim <- 20
+vae_ncov <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, 
+                         n_hidden = 4, n_batch = 1, n_covariate = 0)
+vae_optim_ncov <- optim_adam(vae_ncov$parameters, lr = 0.001)
+
+trained <- train_nn(adni_all_dl, vae_ncov, vae_optim_ncov, 
+                    n_epochs = 50, beta_mse = 0.8, beta_l1 = 0.2, beta = 1)
+vae_ncov <- trained$model
+vae_optim_ncov <- trained$optimizer
+```
+
+# Eval VAE version
+```{r}
+vae_model$eval()
+output <- vae_model$encode_decode(adni_ct)
+combat_latent <- neuroCombat(t(as.matrix(output$feat_mu)), 
+                             batch = batch, mod = cov, 
+                             ref.batch = 0)
+combat_latent_tensor <- torch_tensor(t(combat_latent$dat.combat))
+
+vae_recon_new <- vae_model$decode_from_latent(output$feat_mu, batch = adni_ct$new_batch)
+combat_recon_new <- vae_model$decode_from_latent(combat_latent_tensor, batch = adni_ct$new_batch)
+combat_recon <- vae_model$decode_from_latent(combat_latent_tensor, batch = adni_ct$batch)
+```
+
+# Train non-linear predictor
+```{r}
+pred_model <- predictor_network(n_feature = 62, n_batch = 1, n_covariate = 4, dropout_rate = 0)
+pred_optimizer <- optim_adam(pred_model$parameters, lr = 0.001, weight_decay = 0)
+
+trained_model <- train_predictor(adni_all_dl, pred_model, pred_optimizer, n_epochs = 20)
+pred_model <- trained_model$model
+pred_optimizer <- trained_model$optimizer
+```
+
+# Train linear predictor
+```{r}
+linear_model <- linear_predictor_network(n_feature = 62, n_batch = 1, n_covariate = 4)
+linear_optimizer <- optim_sgd(linear_model$parameters, lr = 0.001)
+
+trained_linear_model <- train_predictor(adni_all_dl, linear_model, linear_optimizer, n_epochs = 10)
+linear_model <- trained_linear_model$model
+linear_optimizer <- trained_linear_model$optimizer
+```
+
+# Get predictions
+```{r}
+pred_model$eval()
+linear_model$eval()
+
+pred_output <- torch_zeros(dim(adni_ct$data_raw))
+linear_output <- torch_zeros(dim(adni_ct$data_raw))
+
+for (i in 1:length(adni_ct)) {
+  pred_output[i] <- pred_model(adni_ct[i])
+  linear_output[i] <- linear_model(adni_ct[i])
+}
+
+as.matrix(pred_output - adni_ct$data_raw)^2 %>% mean
+as.matrix(linear_output - adni_ct$data_raw)^2 %>% mean
+```
+
+# Set up new dataset/dataloader with residuals
+```{r}
+nn_resid_list <- all_resid_list
+nn_resid_list$data_raw <- adni_ct$data_raw - pred_output
+adni_resid <- adni_ct_dataset(nn_resid_list, data_type = "all", 
+                           insert_new_batch = TRUE, new_batch = matrix(0, nrow = nrow(raw),
+                                                                             ncol = 1))
+adni_resid_dl <- dataloader(adni_resid, batch_size = 64, shuffle = TRUE)
+
+n_latent_dim <- 35
+resid_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, n_hidden = 3, n_batch = 1, n_covariate = 4, inject_decoder = TRUE)
+resid_optimizer <- optim_adam(resid_model$parameters, lr = 0.001)
+
+trained_resid <- train_nn(adni_resid_dl, resid_model, resid_optimizer, n_epochs = 15, 
+                          beta_mse = .8, beta_l1 = .2, beta_kl = 1)
+resid_model <- trained_resid$model
+resid_optimizer <- trained_resid$optimizer.
+
+trained_resid <- train_nn(adni_resid_dl, resid_model, resid_optimizer, n_epochs = 15, 
+                          beta_mse = .2, beta_l1 = .8, beta_kl = 1)
+resid_model <- trained_resid$model
+resid_optimizer <- trained_resid$optimizer
+
+#resid_output <- resid_model$encode_decode(adni_resid, decode_from_new = FALSE)
+resid_output_new <- resid_model$encode_decode(adni_resid, decode_from_new = TRUE)
+#resid_sample <- resid_model$sample_from_latent(adni_resid, decode_from_new = TRUE, n_samples = 100)
+
+is_same <- as.matrix(adni_resid$batch) == 0
+round(as.matrix(resid_output_new$feat_recon - adni_resid$data_raw)[!is_same], 3)
+#View(as.matrix(resid_output_new$feat_recon))
+#View(as.matrix(resid_sample$feat_recon))
+#View(as.matrix(adni_resid$data_raw))
+
+as.matrix(resid_output_new$feat_recon - adni_resid$data_raw) %>% abs %>% mean
+as.matrix(adni_resid$data_raw) %>% abs %>% mean
+```
+
+```{r}
+col <- covariates$DIAGNOSI
+pairs(as.matrix(resid_output$feat_mu)[, 1:11], col = col, lower.panel = NULL)
+```
+
+
+

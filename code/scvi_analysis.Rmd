@@ -1,0 +1,333 @@
+---
+title: "scvi_analysis"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(randomForest)
+library(umap)
+library(metan)
+library(ggcorrplot)
+library(ggpubr)
+library(cluster)
+library(FactoMineR)
+library(rdist)
+library(neuroCombat)
+```
+
+## Reading in data
+```{r}
+raw <- read.csv("./data/raw.csv", header = F)
+combat <- read.csv("./data/combat.csv", header = F)
+covbat <- read.csv("./data/covbat.csv", header = F)
+scvi_posterior <- read.csv("./data/scvi_posterior.csv", header = F)
+combat_scvi <- read.csv("./data/combat_scvi.csv", header = F)
+#my_vae <- read.csv("./data/0727_vae_recon.csv", header = F)
+
+scvi_latent <- read.csv("./data/scvi_latent.csv", header = F)
+
+covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
+covariates$subid <- as.factor(covariates$subid)
+
+data_list <- list(raw = raw, 
+                  combat = combat, 
+                  covbat = covbat, 
+                  scvi = scvi_posterior, 
+                  combat_scvi = combat_scvi, 
+                  vae_restyle = adni_restyle_output$vae_recon,
+                  vae_recon = adni_ct_output$vae_recon,
+                  scvi_latent = scvi_latent,
+                  vae_latent_mu = adni_restyle_output$vae_latent_mu,
+                  vae_latent_overall = adni_restyle_output$vae_latent_overall,
+                  vae_latent_overall_recon = adni_ct_output$vae_latent_overall)
+data_list <- list(raw = raw,
+                  combat = input_list$data_raw,
+                  covbat = covbat,
+                  vae_recon = as.matrix(output$feat_recon),
+                  vae_recon_new = as.matrix(vae_recon_new),
+                  combat_recon = as.matrix(combat_recon),
+                  combat_recon_new = as.matrix(combat_recon_new),
+                  combat_latent = as.matrix(combat_latent_tensor))
+#latent_cov <- cbind(covariates, scvi_latent) %>% mutate(id_visit = paste0(subid, "_", visit))
+#rm(raw, combat, covbat, scvi_posterior, combat_scvi, scvi_latent)
+```
+
+## Creating test/train for random forest (OOB is biased)
+```{r}
+set.seed(10)
+test_ids <- sample(unique(covariates$subid), floor(length(unique(covariates$subid)) / 5), replace = F)
+train_ids <- unique(covariates$subid)[!(unique(covariates$subid) %in% test_ids)]
+
+test_list <- lapply(data_list, function(data) {
+  data[which(covariates$subid %in% test_ids), ]
+})
+train_list <- lapply(data_list, function(data) {
+  data[which(covariates$subid %in% train_ids), ]
+})
+
+test_covariates <- covariates[which(covariates$subid %in% test_ids), ]
+train_covariates <- covariates[which(covariates$subid %in% train_ids), ]
+
+rm(test_ids, train_ids)
+```
+
+## Plot UMAPs of data in thickness-space
+```{r}
+umap_plotter <- function(data_list, covariates, n_neighbors, n_epochs) {
+  umap_plot_list <- vector("list", length(data_list))
+  for (i in 1:length(data_list)) {
+    data <- data_list[[i]]
+    umap_custom <- umap.defaults
+    umap_custom$n_neighbors <- n_neighbors
+    umap_custom$n_epochs <- n_epochs
+    
+    data_umap <- umap(data, config = umap_custom)
+    layout_cov <- cbind(data_umap$layout, covariates)
+    
+    subid <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = subid, size = 0.1)) +
+      theme(legend.position = "none")
+    age <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = AGE, size = 0.1))
+    sex <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = SEX, size = 0.1))
+    diagnosis <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = DIAGNOSIS, size = 0.1))
+    random <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = Random, size = 0.1))
+    manufac <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = manufac, size = 0.1))
+    
+    umap_list <- list(subid, age, sex, diagnosis, random, manufac)
+    umap_plot_list[[i]] <- ggarrange(plotlist = umap_list, ncol = 3, nrow = 2, 
+                                     labels = c(names(data_list)[i], "AGE", "SEX", 
+                                                "DIAGNOSIS", "Random", "manufac"))
+  }
+  
+  return(umap_plot_list)
+}
+
+umap_list <- umap_plotter(data_list, covariates, n_neighbors = 10, n_epochs = 80); umap_list
+```
+
+## Plot latent space of SCVI
+```{r}
+col <- covariates$SEX
+pairs(data_list$combat_latent[, 1:5], col = col, lower.panel = NULL)
+pairs(as.matrix(output$feat_mu)[, 1:5], col = col, lower.panel = NULL)
+```
+
+## Random forest test for scanner/biologic effects
+```{r}
+rf_tester <- function(train_list, train_covariates, test_list, test_covariates) {
+  test_error_list <- vector("list", length(train_list))
+  for (i in 1:length(train_list)) {
+    print(i)
+    age_rf <- randomForest(x = train_list[[i]], y = train_covariates$AGE,
+                           xtest = test_list[[i]], ytest = test_covariates$AGE,
+                           ntree = 150)
+    sex_rf <- randomForest(x = train_list[[i]], y = train_covariates$SEX,
+                           xtest = test_list[[i]], ytest = test_covariates$SEX,
+                           ntree = 150)
+    diag_rf <- randomForest(x = train_list[[i]], y = train_covariates$DIAGNOSIS,
+                            xtest = test_list[[i]], ytest = test_covariates$DIAGNOSIS,
+                            ntree = 150)
+    random_rf <- randomForest(x = train_list[[i]], y = train_covariates$Random,
+                              xtest = test_list[[i]], ytest = test_covariates$Random,
+                              ntree = 150)
+    manufac_rf <- randomForest(x = train_list[[i]], y = train_covariates$manufac,
+                               xtest = test_list[[i]], ytest = test_covariates$manufac,
+                               ntree = 150)
+    age_mse <- crossprod(age_rf$test$predicted - test_covariates$AGE) / length(test_covariates$AGE)
+    rf_list <- list(sex_rf, diag_rf, random_rf, manufac_rf)
+    tmp_test_error <- lapply(rf_list, function(rf) {
+      conf_mat <- rf$test$confusion
+      return((conf_mat[1, 2] + conf_mat[2, 1]) / sum(conf_mat[1:2, 1:2]))
+    }) %>% unlist()
+    test_error_list[[i]] <- c(age_mse, tmp_test_error)
+  }
+  test_error_df <- test_error_list %>% unlist() %>% 
+    matrix(nrow = length(test_error_list), byrow = T) %>% 
+    as.data.frame %>% 
+    rename(AGE = V1, SEX = V2, DIAGNOSIS = V3, Random = V4, manufac = V5)
+  return(test_error_df)
+}
+
+rf_error_df <- rf_tester(train_list, train_covariates, test_list, test_covariates); rf_error_df
+```
+
+## ANOVA test for scanner/biologic effects
+```{r}
+anova_tester <- function(data_list, covariates) {
+  anova_list <- vector("list", length(data_list))
+  for (i in 1:length(data_list)) {
+    mod_list <- summary(lm(as.matrix(data_list[[i]]) ~ AGE + SEX + DIAGNOSIS + Random + manufac, 
+                           data = covariates))
+    t_stats <- sapply(mod_list, function(mod) {
+      mod$coefficients[-1, 3]
+    }, simplify = T)
+    
+    mean_abs_t <- (t_stats) %*% rep(1 / ncol(t_stats), ncol(t_stats))
+    mean_sq_t <- diag(t_stats %*% t(t_stats) / ncol(t_stats))
+    
+    anova_list[[i]] <- cbind(mean_abs_t, mean_sq_t)
+  }
+  
+  abs_df <- data.frame(matrix(rep(0, length(anova_list) * nrow(anova_list[[1]])), 
+                              nrow = length(anova_list)))
+  names(abs_df) <- rownames(anova_list[[1]])
+  mean_sq_t_df <- abs_df
+  for (i in 1:length(anova_list)) {
+    abs_df[i, ] <- round(anova_list[[i]][, 1], 5)
+    mean_sq_t_df[i, ] <- round(anova_list[[i]][, 2], 5)
+  }
+  
+  return(list(abs_df, mean_sq_t_df))
+}
+
+anova_mat <- anova_tester(data_list, covariates); anova_mat
+```
+
+## Silhouette test for whether longitudinal scans are clustered together
+```{r}
+subject_silhouette_tester <- function(data_list, covariates) {
+  cluster_codes <- covariates$subid %>% as.numeric()
+  mean_sil_scores <- rep(0, length(data_list))
+  for (i in 1:length(data_list)) {
+    pca_coords <- PCA(data_list[[i]], scale.unit = T, ncp = 30, graph = F)$ind$coord
+    pca_dist <- dist(pca_coords, method = "manhattan")
+    subject_sil_score <- silhouette(x = cluster_codes, 
+                                    dist = pca_dist)
+    mean_sil_scores[[i]] <- mean(subject_sil_score[, 3])
+  }
+  
+  return(mean_sil_scores)
+}
+
+mean_sub_sil_scores <- subject_silhouette_tester(data_list, covariates); mean_sub_sil_scores
+```
+
+## Plots of overall, Siemens, GE/Phillips, and Difference covariance matrices
+```{r}
+cov_generator <- function(data_list, covariates) {
+  cov_list <- vector("list", length(data_list))
+  for (i in 1:length(data_list)) {
+    data <- data_list[[i]]
+    siemens_data <- data[which(covariates$manufac == "True"), ]
+    other_data <- data[which(covariates$manufac == "False"), ]
+    all_cov <- cov(data)
+    siemens_cov <- cov(siemens_data)
+    other_cov <- cov(other_data)
+    diff_cov <- siemens_cov - other_cov
+    
+    cov_list[[i]] <- list(all_cov, siemens_cov, other_cov, diff_cov)
+  }
+  
+  return(cov_list)
+}
+
+cov_plotter <- function(cov_list) {
+  ordered_cormat <- reorder_cormat(cov_list[[1]][[1]])
+  hclust_ordering <- rownames(ordered_cormat) %>% substring(2) %>% as.numeric()
+  
+  cov_plot_list <- vector("list", length(cov_list))
+  for (i in 1:length(cov_list)) {
+    tmp_cov_plot_list <- vector("list", length(cov_list[[i]]))
+    for (j in 1:length(cov_list[[i]])) {
+      tmp_ordered_cov <- cov_list[[i]][[j]][hclust_ordering, hclust_ordering]
+      tmp_cov_plot_list[[j]] <- ggcorrplot(abs(tmp_ordered_cov)) +
+        scale_fill_gradient2(low = "white", high = "red", 
+                             breaks=c(0, 1), limit=c(0, 1))
+    }
+    cov_plot_list[[i]] <- ggarrange(plotlist = tmp_cov_plot_list, 
+                                    ncol = 2, nrow = 2, 
+                                    labels = c("Overall", "Siemens", 
+                                               "GE/Phillips", "Difference"), 
+                                    legend = "none")
+  }
+  
+  return(cov_plot_list)
+}
+
+cov_list <- cov_generator(data_list, covariates)
+cov_plot_list <- cov_plotter(cov_list)
+
+lapply(cov_list, function(cov_mat) {
+  norm(cov_mat[[4]], type = "F")
+})
+```
+
+## Plots of pre/post correction covariance matrices between subjects
+```{r}
+get_n_max <- function(data_col, n_max, get_value = F) {
+  index_list <- rep(0, n_max)
+  value_list <- rep(0, n_max)
+  for (i in 1:n_max) {
+    tmp_max <- which.max(data_col)
+    value_list[i] <- data_col[tmp_max]
+    index_list[i] <- tmp_max
+    data_col[tmp_max] <- NA
+  }
+  if (get_value)
+    return(value_list)
+  else
+    return(index_list)
+}
+
+get_pre_post <- function(data_list, similarity_type = c("correlation", "manhattan", "euclidean"), covariates, n_max) {
+  max_cor_matrix_list <- vector("list", length(data_list))
+  for (i in 1:(length(data_list))) {
+    if (similarity_type == "correlation")
+      raw_vs_corrected_cor <- cor(t(data_list[[1]]), t(data_list[[i]])) %>% as.data.frame()
+    else if (similarity_type == "manhattan") 
+      raw_vs_corrected_cor <- -cdist(data_list[[1]], data_list[[i]], metric = "manhattan") %>% as.data.frame()
+    else if (similarity_type == "euclidean")
+      raw_vs_corrected_cor <- -cdist(data_list[[1]], data_list[[i]], metric = "euclidean") %>% as.data.frame()
+    max_index <- lapply(raw_vs_corrected_cor, function(data_col) {get_n_max(data_col, n_max, get_value = F)})
+    max_matrix <- matrix(unlist(max_index), ncol = n_max, byrow = T)
+    
+    # for each subject, mark index of correlation between raw and corrected self as -1
+    id_num_matrix <- matrix(rep(1:nrow(max_matrix), n_max), ncol = n_max, byrow = F)
+    self_index <- which(max_matrix - id_num_matrix == 0)
+    
+    # label other indices with subid
+    rownames(max_matrix) <- covariates$subid
+    for (j in 1:length(max_matrix)) {
+      max_matrix[j] <- as.numeric(as.character(covariates$subid[max_matrix[j]]))
+    }
+    
+    # label corresponding longitudinal scans with -2
+    for (j in 1:nrow(max_matrix)) {
+      as.numeric(rownames(max_matrix)[j])
+      max_matrix[j, max_matrix[j, ] == as.numeric(rownames(max_matrix)[j])] <- -2
+    }
+    max_matrix[self_index] <- -1 # last step of marking raw vs corrected self as -1
+    max_cor_matrix_list[[i]] <- max_matrix %>% as.data.frame()
+  }
+  return(max_cor_matrix_list)
+}
+
+pre_post_analyzer <- function(pre_post_matrix_list, covariates) {
+  count_neg_1s_2s <- function(matrix) {
+    n = nrow(matrix)
+    num_1s <- sum(matrix == -1)
+    num_2s <- sum(matrix == -2) / (n - 1)
+    return(c(n, num_1s, num_2s))
+  }
+  
+  summary_mat_list <- vector("list")
+  unique_subid <- unique(covariates$subid)
+  for (i in 1:length(pre_post_matrix_list)) {
+    tmp_df <- cbind(pre_post_matrix_list[[i]], subid = covariates$subid)
+    
+    summary_mat <- matrix(rep(0, length(unique_subid) * 3), ncol = 3)
+    for (j in 1:length(unique_subid))
+      summary_mat[j, ] <- count_neg_1s_2s(tmp_df[tmp_df$subid == unique_subid[j], ])
+    summary_mat_list[[i]] <- summary_mat
+  }
+  
+  return(summary_mat_list)
+}
+
+max_cor_matrix_list <- get_pre_post(data_list, similarity_type = "correlation", covariates, n_max = 10)
+post_post_cor_matrix <- get_pre_post(list(data_list[[2]], data_list[[2]]), similarity_type = "manhattan", covariates = covariates, n_max = 10)
+latent_cor_matrix <- get_pre_post(list(scvi_latent, scvi_latent), similarity_type = "euclidean", covariates = covariates, n_max = 10)
+
+pre_post_analyzer(max_cor_matrix_list, covariates)[[4]] %>% colSums()
+pre_post_analyzer(post_post_cor_matrix, covariates)[[1]] %>% colSums()
+```

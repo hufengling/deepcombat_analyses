@@ -1,0 +1,117 @@
+---
+title: "DeepCombat"
+output: html_document
+---
+
+# Packages
+```{r}
+library(torch)
+library(torchvision)
+library(tidyverse)
+library(reshape2)
+library(matlib)
+library(neuroCombat)
+source("./code/utils.R")
+source("./code/data_loader.R")
+source("./code/combat_module.R")
+source("./code/predictor_module.R")
+```
+
+# Preprocessing
+```{r}
+set.seed(20)
+raw <- read.csv("./data/raw.csv", header = F) %>% as.matrix()
+covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
+
+cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, covariates)[, -1]
+# dummyVars(~ SEX + DIAGNOSIS + AGE, .) %>% 
+# predict(newdata = covariates)
+batch <- model.matrix(~ manufac, covariates)[, -1] %>% as.matrix()
+# dummyVars(~ manufac, .) %>% 
+# predict(newdata = covariates)
+
+combat <- neuroCombat(t(raw), batch = batch, mod = cov, ref.batch = 0)
+
+input_list <- list(data_raw = t(combat$dat.combat), cov = cov, batch = batch)
+
+all_resid_list <- input_list %>% 
+  residualize_data(is_split = F)
+
+adni_ct <- adni_ct_dataset(all_resid_list, data_type = "all", 
+                           insert_new_batch = TRUE, new_batch = matrix(0, nrow = nrow(raw),
+                                                                             ncol = 1))
+adni_all_dl <- dataloader(adni_ct, batch_size = 100, shuffle = TRUE)
+```
+
+# Training VAE version
+```{r}
+n_latent_dim <- 5
+vae_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, n_batch = 1, n_covariate = 4)
+vae_optimizer <- optim_adam(vae_model$parameters, lr = 0.001)
+
+trained <- train_nn(adni_all_dl, vae_model, vae_optimizer, n_epochs = 50, beta = 1 / n_latent_dim)
+vae_model <- trained$model
+vae_optimizer <- trained$optimizer
+```
+
+# Eval VAE version
+```{r}
+vae_model$eval()
+output <- vae_model$encode_decode(adni_ct)
+combat_latent <- neuroCombat(t(as.matrix(output$feat_mu)), 
+                             batch = batch, mod = cov, 
+                             ref.batch = 0)
+combat_latent_tensor <- torch_tensor(t(combat_latent$dat.combat))
+
+vae_recon_new <- vae_model$decode_from_latent(output$feat_mu, batch = adni_ct$new_batch)
+combat_recon_new <- vae_model$decode_from_latent(combat_latent_tensor, batch = adni_ct$new_batch)
+combat_recon <- vae_model$decode_from_latent(combat_latent_tensor, batch = adni_ct$batch)
+```
+
+```{r}
+train_predictor <- function(torch_dl, torch_model, torch_optimizer, n_epochs) {
+  torch_model$train
+  for (epoch in 1:n_epochs) {
+    loss_recorder <- 0
+    
+    coro::loop(for (item in torch_dl) {
+      output <- torch_model(item)
+      
+      # Loss
+      mse_loss <- nn_mse_loss()
+      torch_optimizer$zero_grad()
+      
+      loss_recon <- mse_loss(output, item[[1]])
+      loss_recon$backward()
+      torch_optimizer$step()
+      
+      loss_recorder <- loss_recorder + as.numeric(loss_recon)
+    })
+    
+    print(paste0("Prediction loss at epoch ", epoch, ": ", 
+                 round(loss_recorder)))
+  }
+  
+  return(list(model = torch_model, optimizer = torch_optimizer))
+}
+```
+
+```{r}
+pred_model <- predictor_network(n_feature = 62, n_batch = 1, n_covariate = 4, dropout_rate = 0.9)
+pred_optimizer <- optim_adam(pred_model$parameters, lr = 0.001, weight_decay = 0.01)
+
+trained_model <- train_predictor(adni_all_dl, pred_model, pred_optimizer, n_epochs = 10)
+pred_model <- trained_model$model
+pred_optimizer <- trained_model$optimizer
+```
+
+```{r}
+pred_model$eval()
+
+for (i in 1:length(adni_ct))
+
+```
+
+
+
+

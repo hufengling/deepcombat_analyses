@@ -1,6 +1,0 @@
-,manufac_rf,manufac_anova,manufac_asw,manufac_kbet,manufac_lisi,sex_rf,sex_anova,sex_asw,sex_kbet,sex_lisi,diagnosis_rf,diagnosis_anova,diagnosis_asw,diagnosis_kbet,diagnosis_lisi,age_rf,age_anova,age_r2
-raw,3.0,2.0,1.0,1.0,1.0,2.0,2.0,4.0,1.0,2.0,1.0,4.0,5.0,3.0,2.0,2.0,2.0,4.0
-combat,2.0,4.0,2.0,2.0,4.0,4.0,3.0,3.0,2.0,4.0,4.0,2.0,4.0,2.0,3.0,4.0,3.0,3.0
-covbat,1.0,5.0,3.0,4.0,3.0,3.0,4.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,4.0,3.0,4.0,2.0
-scvi_posterior,4.0,1.0,5.0,3.0,2.0,1.0,1.0,1.0,4.0,1.0,2.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0
-null,5.0,3.0,4.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,1.0,5.0,5.0,5.0,5.0,5.0
