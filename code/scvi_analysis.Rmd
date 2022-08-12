@@ -11,7 +11,6 @@ library(metan)
 library(ggcorrplot)
 library(ggpubr)
 library(cluster)
-library(FactoMineR)
 library(rdist)
 library(neuroCombat)
 ```
@@ -30,46 +29,42 @@ scvi_latent <- read.csv("./data/scvi_latent.csv", header = F)
 covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
 covariates$subid <- as.factor(covariates$subid)
 
-data_list <- list(raw = raw, 
-                  combat = combat, 
-                  covbat = covbat, 
-                  scvi = scvi_posterior, 
-                  combat_scvi = combat_scvi, 
-                  vae_restyle = adni_restyle_output$vae_recon,
-                  vae_recon = adni_ct_output$vae_recon,
-                  scvi_latent = scvi_latent,
-                  vae_latent_mu = adni_restyle_output$vae_latent_mu,
-                  vae_latent_overall = adni_restyle_output$vae_latent_overall,
-                  vae_latent_overall_recon = adni_ct_output$vae_latent_overall)
+# data_list <- list(raw = raw, 
+#                   combat = combat, 
+#                   covbat = covbat, 
+#                   scvi = scvi_posterior, 
+#                   combat_scvi = combat_scvi, 
+#                   vae_restyle = adni_restyle_output$vae_recon,
+#                   vae_recon = adni_ct_output$vae_recon,
+#                   scvi_latent = scvi_latent,
+#                   vae_latent_mu = adni_restyle_output$vae_latent_mu,
+#                   vae_latent_overall = adni_restyle_output$vae_latent_overall,
+#                   vae_latent_overall_recon = adni_ct_output$vae_latent_overall)
 data_list <- list(raw = raw,
-                  combat = input_list$data_raw,
+                  combat = combat,
                   covbat = covbat,
-                  vae_recon = as.matrix(output$feat_recon),
-                  vae_recon_new = as.matrix(vae_recon_new),
-                  combat_recon = as.matrix(combat_recon),
-                  combat_recon_new = as.matrix(combat_recon_new),
-                  combat_latent = as.matrix(combat_latent_tensor))
+                  vae_recon = vae_output$recon,
+                  vae_restyle = vae_output$restyle,
+                  vae_combat = vae_output$combat_restyle,
+                  vae_resids = vae_output$resids,
+                  vae_mu = vae_output$latent_mu,
+                  vae_recon_inject = vae_output_inject$recon,
+                  vae_restyle_inject = vae_output_inject$restyle,
+                  vae_combat_inject = vae_output_inject$combat_restyle,
+                  vae_resids_inject = vae_output_inject$resids,
+                  vae_mu_inject = vae_output_inject$latent_mu)
+                  # vae_restyle_ncov = vae_output_ncov$restyle,
+                  # vae_combat_ncov = vae_output_ncov$combat_restyle,
+                  # pred_restyle = pred_output$restyle,
+                  # pred_combat = pred_output$combat_restyle,
+                  # lin_restyle = linear_output$restyle,
+                  # lin_combat = linear_output$combat_restyle)
+data_list <- lapply(data_list, as.matrix)
+# combat_recon = as.matrix(combat_recon),
+# combat_recon_new = as.matrix(combat_recon_new),
+# combat_latent = as.matrix(combat_latent_tensor))
 #latent_cov <- cbind(covariates, scvi_latent) %>% mutate(id_visit = paste0(subid, "_", visit))
 #rm(raw, combat, covbat, scvi_posterior, combat_scvi, scvi_latent)
-```
-
-## Creating test/train for random forest (OOB is biased)
-```{r}
-set.seed(10)
-test_ids <- sample(unique(covariates$subid), floor(length(unique(covariates$subid)) / 5), replace = F)
-train_ids <- unique(covariates$subid)[!(unique(covariates$subid) %in% test_ids)]
-
-test_list <- lapply(data_list, function(data) {
-  data[which(covariates$subid %in% test_ids), ]
-})
-train_list <- lapply(data_list, function(data) {
-  data[which(covariates$subid %in% train_ids), ]
-})
-
-test_covariates <- covariates[which(covariates$subid %in% test_ids), ]
-train_covariates <- covariates[which(covariates$subid %in% train_ids), ]
-
-rm(test_ids, train_ids)
 ```
 
 ## Plot UMAPs of data in thickness-space
@@ -85,13 +80,15 @@ umap_plotter <- function(data_list, covariates, n_neighbors, n_epochs) {
     data_umap <- umap(data, config = umap_custom)
     layout_cov <- cbind(data_umap$layout, covariates)
     
-    subid <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = subid, size = 0.1)) +
+    subid <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = subid, shape = ".")) +
       theme(legend.position = "none")
-    age <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = AGE, size = 0.1))
-    sex <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = SEX, size = 0.1))
-    diagnosis <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = DIAGNOSIS, size = 0.1))
-    random <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = Random, size = 0.1))
-    manufac <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = manufac, size = 0.1))
+    age <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = AGE, shape = "."))
+    sex <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = SEX, shape = "."))
+    diagnosis <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = DIAGNOSIS, shape = "."))
+    random <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = Random, shape = ".")) +
+      theme(legend.position = "none")
+    manufac <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = manufac, shape = ".")) +
+      theme(legend.position = "none")
     
     umap_list <- list(subid, age, sex, diagnosis, random, manufac)
     umap_plot_list[[i]] <- ggarrange(plotlist = umap_list, ncol = 3, nrow = 2, 
@@ -102,18 +99,36 @@ umap_plotter <- function(data_list, covariates, n_neighbors, n_epochs) {
   return(umap_plot_list)
 }
 
-umap_list <- umap_plotter(data_list, covariates, n_neighbors = 10, n_epochs = 80); umap_list
+umap_list <- umap_plotter(data_list, covariates, n_neighbors = 15, n_epochs = 30); umap_list
 ```
 
 ## Plot latent space of SCVI
 ```{r}
-col <- covariates$SEX
-pairs(data_list$combat_latent[, 1:5], col = col, lower.panel = NULL)
+col <- covariates$manufac
+pairs(as.matrix(vae_output$latent_mu)[, 1:10], col = col, lower.panel = NULL)
+pairs(data_list$pred_combat[, 1:5], col = col, lower.panel = NULL)
 pairs(as.matrix(output$feat_mu)[, 1:5], col = col, lower.panel = NULL)
 ```
 
 ## Random forest test for scanner/biologic effects
 ```{r}
+# Creating test/train for random forest (OOB is biased)
+set.seed(10)
+test_ids <- sample(unique(covariates$subid), floor(length(unique(covariates$subid)) / 5), replace = F)
+train_ids <- unique(covariates$subid)[!(unique(covariates$subid) %in% test_ids)]
+
+test_list <- lapply(data_list, function(data) {
+  data[which(covariates$subid %in% test_ids), ]
+})
+train_list <- lapply(data_list, function(data) {
+  data[which(covariates$subid %in% train_ids), ]
+})
+
+test_covariates <- covariates[which(covariates$subid %in% test_ids), ]
+train_covariates <- covariates[which(covariates$subid %in% train_ids), ]
+
+rm(test_ids, train_ids)
+
 rf_tester <- function(train_list, train_covariates, test_list, test_covariates) {
   test_error_list <- vector("list", length(train_list))
   for (i in 1:length(train_list)) {

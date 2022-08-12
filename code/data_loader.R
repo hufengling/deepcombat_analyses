@@ -28,22 +28,23 @@ adni_ct_dataset <- dataset(
     
     if (data_type == "train") {
       self$data_raw <- torch_tensor(input_list$train$data_raw)
-      self$data_residuals <- torch_tensor(input_list$train$data_residuals)
+      #self$data_residuals <- torch_tensor(input_list$train$data_residuals)
       self$covariates <- torch_tensor(input_list$train$cov)
       self$batch <- torch_tensor(input_list$train$batch)
     } else if (data_type == "test") {
       self$data_raw <- torch_tensor(input_list$test$data_raw)
-      self$data_residuals <- torch_tensor(input_list$test$data_residuals)
+      #self$data_residuals <- torch_tensor(input_list$test$data_residuals)
       self$covariates <- torch_tensor(input_list$test$cov)
       self$batch <- torch_tensor(input_list$test$batch)
     } else if (data_type == "all") {
-      if (!all(c("data_raw", "cov", "batch", "data_residuals") %in% names(input_list))) {
+      if (!all(c("data_raw", "cov", "batch", "one_hot_batch") %in% names(input_list))) {
         stop("List must have elements 'data_raw', 'cov', 'batch' - not 'train' and 'test'")
       }
       self$data_raw <- torch_tensor(input_list$data_raw)
-      self$data_residuals <- torch_tensor(input_list$data_residuals)
+      #self$data_residuals <- torch_tensor(input_list$data_residuals)
       self$covariates <- torch_tensor(input_list$cov)
       self$batch <- torch_tensor(input_list$batch)
+      self$one_hot_batch <- torch_tensor(input_list$one_hot_batch)
       
       if (insert_new_batch) {
         self$new_batch <- torch_tensor(new_batch)
@@ -55,11 +56,14 @@ adni_ct_dataset <- dataset(
   
   .getitem = function(index) {
     data_raw <- self$data_raw[index, ]
-    data_residuals <- self$data_residuals[index, ]
+    #data_residuals <- self$data_residuals[index, ]
     covariates <- self$covariates[index, ]
     batch <- self$batch[index]
     new_batch <- self$new_batch[index]
-    return(list(data_raw, data_residuals, covariates, batch, new_batch))
+    one_hot_batch <- self$one_hot_batch[index, ]
+    return(list(data_raw, 
+                #data_residuals, 
+                covariates, batch, new_batch, one_hot_batch))
   },
   
   .length = function() {
