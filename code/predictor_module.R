@@ -7,7 +7,8 @@ predictor_network <- nn_module(
     self$layers <- nn_module_list()
     
     for (i in 1:(self$n_layers - 1)) {
-      self$layers[[i]] <- nn_linear(self$layer_dim[self$n_layers + 1 - i], self$layer_dim[self$n_layers - i])
+      self$layers[[i]] <- nn_linear(self$layer_dim[self$n_layers + 1 - i],# + n_batch, 
+                                    self$layer_dim[self$n_layers - i])
     }
   },
   
@@ -26,17 +27,19 @@ predictor_network <- nn_module(
           self$layers[[i]]() %>% 
           nnf_dropout(p = self$dropout_rate) %>% 
           nnf_relu()
+        #tmp <- torch_cat(list(batch, tmp), dim = -1)
       }
       output <- tmp %>% self$layers[[self$n_layers - 1]]()
       return(output)
     }
   },
   
-  predict = function(torch_ds) {
+  predict = function(torch_ds, raw_means, raw_sds) {
     covariates <- torch_ds$covariates
-    
-    tmp_recon <- torch_cat(list(torch_ds$batch, covariates), dim = 2)
-    tmp_restyle <- torch_cat(list(torch_ds$new_batch, covariates), dim = 2)
+    batch <- torch_ds$batch
+    new_batch <- torch_ds$new_batch
+    tmp_recon <- torch_cat(list(batch, covariates), dim = 2)
+    tmp_restyle <- torch_cat(list(new_batch, covariates), dim = 2)
     
     if (self$n_layers == 2) {
       recon <- tmp_recon %>% self$layers[[1]]()
@@ -45,30 +48,36 @@ predictor_network <- nn_module(
       for (i in 1:(self$n_layers - 2)) {
         tmp_recon <- tmp_recon %>% 
           self$layers[[i]]() %>% 
-          nnf_dropout(p = self$dropout_rate) %>% 
           nnf_relu()
+        #tmp_recon <- torch_cat(list(batch, tmp_recon), dim = -1)
         tmp_restyle <- tmp_restyle %>% 
           self$layers[[i]]() %>% 
-          nnf_dropout(p = self$dropout_rate) %>% 
           nnf_relu()
+        #tmp_restyle <- torch_cat(list(new_batch, tmp_restyle), dim = -1)
       }
       recon <- tmp_recon %>% self$layers[[self$n_layers - 1]]()
       restyle <- tmp_restyle %>% self$layers[[self$n_layers - 1]]()
     }
     
-    resids <- torch_ds$data_raw - recon
+    raw_means <- torch_tensor(raw_means)
+    raw_sds <- torch_tensor(raw_sds)
     
-    combat <- neuroCombat(dat = t(as.matrix(resids)),
-                          batch = as.matrix(torch_ds$batch),
-                          mod = as.matrix(covariates),
-                          ref.batch = as.numeric(torch_ds$new_batch[1]))$dat.combat %>% 
-      t() %>% torch_tensor()
+    recon <- recon * raw_sds + raw_means 
+    restyle <- restyle * raw_sds + raw_means
+    resids <- (torch_ds$data * raw_sds + raw_means) - recon
+    
+    # combat <- neuroCombat(dat = t(as.matrix(resids)),
+    #                       batch = as.matrix(torch_ds$batch),
+    #                       mod = as.matrix(covariates),
+    #                       ref.batch = as.numeric(torch_ds$new_batch[1]))$dat.combat %>% 
+    #   t() %>% torch_tensor()
     
     return(list(recon = recon, 
                 restyle = restyle, 
                 resids = resids,
-                combat = combat,
-                combat_restyle = restyle + combat))
+                resids_restyle = restyle + resids))
+                #combat = combat,
+                #combat_restyle = restyle + combat))
   })
 # 
 # linear_predictor_network <- nn_module(

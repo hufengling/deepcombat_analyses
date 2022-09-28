@@ -1,146 +1,174 @@
-encoder <- nn_module(
+vanilla_encoder <- nn_module(
   "Encoder",
-  initialize = function(vae_dim, n_batch = 0, n_covariates = 0, 
-                        inject_batch = FALSE, inject_covariates = FALSE) {
-    self$inject_batch = inject_batch
-    self$inject_covariates = inject_covariates
-    if (inject_batch & n_batch == 0) {
-      stop("Number of batches must be greater than 0")
-    }
-    if (inject_covariates & n_covariates == 0) {
-      stop("Number of covariates must be greater than 0")
+  initialize = function(vae_dim) {
+    self$n_layers = length(vae_dim)
+    self$layers <- nn_module_list()
+    self$layers[[1]] <- nn_linear(vae_dim[1], vae_dim[2])
+    
+    for (i in 2:(self$n_layers - 2)) {
+      self$layers[[i]] <- nn_linear(vae_dim[i], vae_dim[i + 1])
     }
     
-    self$e1 <- nn_linear(vae_dim[1] + n_batch, vae_dim[2])
-    self$e2 <- nn_linear(vae_dim[2] + n_batch, vae_dim[3])
-    
-    if (inject_covariates) {
-      self$cov1 <- nn_linear(n_covariates, n_covariates)
-    }
-    
-    self$e_mu <- nn_linear(vae_dim[3] + n_batch + n_covariates, vae_dim[4])
-    self$e_logvar <- nn_linear(vae_dim[3] + n_batch + n_covariates, vae_dim[4])
+    self$e_mu <- nn_linear(vae_dim[self$n_layers - 1], vae_dim[self$n_layers])
+    self$e_logvar <- nn_linear(vae_dim[self$n_layers - 1], vae_dim[self$n_layers])
   },
-  forward = function(x, batch = NULL, covariates = NULL) {
-    if (self$inject_batch) {
-      hidden1 <- torch_cat(list(x, batch), dim = -1) %>% 
-        self$e1() %>% 
-        nnf_relu()
-      hidden2 <- torch_cat(list(hidden1, batch), dim = -1) %>% 
-        self$e2() %>% 
-        nnf_relu()
-      if (self$inject_covariates) {
-        cov_hidden <- covariates %>% 
-          self$cov1() %>% 
-          nnf_relu()
-        hidden3 <- torch_cat(list(hidden2, batch, cov_hidden), dim = -1) # calculate hidden layer
-      } else {
-        hidden3 <- torch_cat(list(hidden2, batch), dim = -1) # calculate hidden layer
-      }
-    } else {
-      hidden3 <- x %>% 
-        self$e1() %>% 
-        nnf_relu() %>% 
-        self$e2() %>% 
+  
+  forward = function(features) {
+    tmp <- features
+    for (i in 1:(self$n_layers - 2)) {
+      tmp <- tmp %>% 
+        self$layers[[i]]() %>% 
         nnf_relu()
     }
     
     # encode hidden layer to mean and variance vectors
-    mu <- self$e_mu(hidden3)
-    logvar <- self$e_logvar(hidden3)
-    list(mu, logvar)
+    mu <- self$e_mu(tmp)
+    logvar <- self$e_logvar(tmp)
+    return(list(mu, logvar))
   })
 
-decoder <- nn_module(
+vanilla_decoder <- nn_module(
   "Decoder",
-  initialize = function(vae_dim, n_batch, inject_batch = FALSE) {
-    self$inject_batch = inject_batch
-    if (inject_batch & n_batch == 0) {
-      stop("Number of batches must be greater than 0")
-    }
-    if (!inject_batch) {
-      n_batch = 0
+  initialize = function(vae_dim) {
+    self$inject_decoder = inject_decoder
+    self$deep_inject = deep_inject
+    self$n_layers = length(vae_dim)
+    self$layers <- nn_module_list()
+    
+    if (self$inject_decoder) {
+      self$layers[[1]] <- nn_linear(vae_dim[self$n_layers] + n_batch + n_covariate, 
+                                    vae_dim[self$n_layers - 1])
+    } else {
+      self$layers[[1]] <- nn_linear(vae_dim[self$n_layers] + n_batch, 
+                                    vae_dim[self$n_layers - 1])
     }
     
-    self$d1 <- nn_linear(vae_dim[4] + n_batch, vae_dim[3])
-    self$d2 <- nn_linear(vae_dim[3] + n_batch, vae_dim[2])
-    self$d3 <- nn_linear(vae_dim[2] + n_batch, vae_dim[1])
-    self$d4 <- nn_linear(vae_dim[1], vae_dim[1])
+    if (self$deep_inject) {
+      for (i in 2:(self$n_layers - 1)) {
+        self$layers[[i]] <- nn_linear(vae_dim[self$n_layers + 1 - i] + n_batch, 
+                                      vae_dim[self$n_layers - i])
+      }
+    } else {
+      for (i in 2:(self$n_layers - 1)) {
+        self$layers[[i]] <- nn_linear(vae_dim[self$n_layers + 1 - i], 
+                                      vae_dim[self$n_layers - i])
+      }
+    }
+    
   },
-  forward = function(z, batch = NULL) {
-    if (self$inject_batch) {
-      hidden1 <- torch_cat(list(z, batch), dim = -1) %>% 
-        self$d1() %>% 
-        nnf_relu()
-      hidden2 <- torch_cat(list(hidden1, batch), dim = -1) %>% 
-        self$d2() %>% 
-        nnf_relu()
-      x_hat <- torch_cat(list(hidden2, batch), dim = -1) %>% 
-        self$d3() %>% 
-        nnf_relu() %>% 
-        self$d4()
-    } else{
-      x_hat <- z %>% 
-        self$d1() %>% 
-        nnf_relu() %>% 
-        self$d2() %>% 
-        nnf_relu() %>% 
-        self$d3()
+  forward = function(z, batch = NULL, decoder_covariates = NULL) {
+    tmp <- torch_cat(list(z, batch, decoder_covariates), dim = -1)
+    
+    if (self$deep_inject) {
+      for (i in 1:(self$n_layers - 2)) {
+        tmp <- tmp %>% 
+          self$layers[[i]]() %>% 
+          nnf_relu()
+        tmp <- torch_cat(list(tmp, batch), dim = -1)
+      }
+    } else {
+      for (i in 1:(self$n_layers - 2)) {
+        tmp <- tmp %>% 
+          self$layers[[i]]() %>% 
+          nnf_relu()
+      }
     }
     
-    x_hat
+    
+    output <- tmp %>% 
+      self$layers[[self$n_layers - 1]]()
+    
+    return(output)
   })
 
-vae_module <- nn_module(
+vanilla_vae <- nn_module(
   "VAE", 
-  initialize = function(feature_dim, latent_dim, covariate_dim, n_batch) {
+  initialize = function(feature_dim, latent_dim, 
+                        n_hidden, n_batch, n_covariate, 
+                        inject_decoder = FALSE, deep_inject = FALSE) {
     self$latent_dim <- latent_dim
-    self$covariate_dim <- covariate_dim
-    self$dims <- calculate_vae_dim(feature_dim, latent_dim)
+    self$n_covariate <- n_covariate
+    self$inject_decoder <- inject_decoder
+    self$deep_inject <- deep_inject
+    self$dims <- calculate_vae_dim(feature_dim, latent_dim, n_hidden)
     
-    self$encoder <- encoder(self$dims, n_batch, 
-                            inject_batch = TRUE, inject_covariates = FALSE)
-    self$decoder <- decoder(self$dims, n_batch, inject_batch = TRUE)
-  },
-  restyle = function(item_list) {
-    features <- item_list[[1]]
-    residuals <- item_list[[2]]
-    covariates <- item_list[[3]]
-    batch <- item_list[[4]]
-    new_batch <- item_list[[5]]
-    
-    latent_feature_dist <- self$encoder(x = residuals, batch = batch, covariates = covariates) # encode features to latent feature distributions using original batch
-    feat_z <- latent_feature_dist[[1]] # dont need to map to distribution anymore when restyling
-    feat_z <- feat_z * torch_cat(batch, covariates, torch_ones(self$latent_dim - self$covariate_dim))
-    
-    feat_reconstructed <- self$decoder(z = feat_z, batch = new_batch) # decode using "restyle" batch
-    
-    list(feat_recon = feat_reconstructed, feat_mu = feat_z)
+    self$encoder <- vanilla_encoder(self$dims, n_batch, n_covariate)
+    self$decoder <- vanilla_decoder(self$dims, n_batch, n_covariate, 
+                                    self$inject_decoder, self$deep_inject)
   },
   forward = function(item_list) {
+    covariates <- NULL
+    decoder_covariates <- NULL
+    if (self$n_covariate != 0) {
+      covariates <- item_list[[2]]
+    }
+    if (self$inject_decoder) {
+      decoder_covariates = covariates
+    }
+    
     features <- item_list[[1]]
-    residuals <- item_list[[2]]
-    covariates <- item_list[[3]]
-    batch <- item_list[[4]]
+    batch <- item_list[[3]]
     
-    latent_feature_dist <- self$encoder(x = residuals, batch = batch, covariates = covariates) # encode features to latent feature distributions
-    feat_mu <- latent_feature_dist[[1]]
-    feat_logvar <- latent_feature_dist[[2]]
-    feat_z <- feat_mu + torch_exp(feat_logvar$mul(0.5)) * torch_randn(self$latent_dim) # reparameterization trick
-    feat_z <- feat_z * torch_cat(list(batch, covariates, 
-                                      torch_ones(c(dim(feat_z)[1], 
-                                                   self$latent_dim - self$covariate_dim - 1))),
-                                 dim = 2)# trying to learn coefficients
+    # encode features to latent feature distributions
+    latent_dist <- self$encoder(features = features, batch = batch, 
+                                covariates = covariates)
+    feat_mu <- latent_dist[[1]]
+    feat_logvar <- latent_dist[[2]]
     
-    feat_reconstructed <- self$decoder(z = feat_z, batch = batch)
+    # sample from latent distribution with re-parameterization trick
+    feat_z <- feat_mu + torch_exp(feat_logvar$mul(0.5)) * torch_randn(self$latent_dim)
     
-    return(list(feat_recon = feat_reconstructed, feat_mu = feat_mu, feat_logvar = feat_logvar))
-  }
-)
-
-# vae_adversary <- nn_module(
-#   "VAE adversary",
-#   initialize = function(latent_dim, n_batch) {
-#     
-#   }
-# )
+    feat_reconstructed <- self$decoder(z = feat_z, batch = batch,
+                                       decoder_covariates = decoder_covariates)
+    
+    return(list(feat_recon = feat_reconstructed, 
+                feat_mu = feat_mu, 
+                feat_logvar = feat_logvar, 
+                feat_z = feat_z))
+  },
+  encode_decode = function(torch_ds, raw_means, raw_sds) {
+    covariates <- NULL
+    decoder_covariates <- NULL
+    if (self$n_covariate != 0) {
+      covariates <- torch_ds$covariates
+    }
+    if (self$inject_decoder) {
+      decoder_covariates <- covariates
+    }
+    
+    raw_means <- torch_tensor(raw_means)
+    raw_sds <- torch_tensor(raw_sds)
+    
+    latent_dist <- self$encoder(features = torch_ds$data_raw, batch = torch_ds$batch,
+                                covariates = covariates)
+    feat_mu <- latent_dist[[1]]
+    feat_logvar <- latent_dist[[2]]
+    
+    feat_reconstructed <- self$decoder(z = feat_mu, batch = torch_ds$batch,
+                                       decoder_covariates = decoder_covariates) * raw_sds + raw_means
+    feat_restyled <- self$decoder(z = feat_mu, batch = torch_ds$new_batch,
+                                  decoder_covariates = decoder_covariates) * raw_sds + raw_means
+    feat_resids <- torch_ds$data_raw * raw_sds + raw_means - feat_reconstructed
+    
+    combat_mu <- neuroCombat(dat = t(as.matrix(feat_resids)),
+                             batch = as.matrix(torch_ds$batch),
+                             mod = as.matrix(torch_ds$covariates),
+                             ref.batch = as.numeric(torch_ds$new_batch[1]),
+                             verbose = FALSE)$dat.combat %>% 
+      t() %>% torch_tensor()
+    feat_restyled_combat <- neuroCombat(dat = t(as.matrix(feat_resids)),
+                                        batch = as.matrix(torch_ds$batch),
+                                        mod = as.matrix(torch_ds$covariates),
+                                        ref.batch = as.numeric(torch_ds$new_batch[1]),
+                                        verbose = FALSE)$dat.combat %>% 
+      t() %>% torch_tensor()
+    
+    return(list(recon = feat_reconstructed,
+                restyle = feat_restyled, 
+                resids = feat_resids,
+                resids_restyle = feat_restyled + feat_resids,
+                combat = feat_combat,
+                combat_restyle = feat_restyled + feat_combat,
+                latent_mu = feat_mu,
+                latent_logvar = feat_logvar))
+  })
