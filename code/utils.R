@@ -117,15 +117,9 @@ range01 <- function (df) {
   })
 }
 
-get_combat_resids <- function(dat, batch, mod, ref_batch = NULL) {
-  covbat_output <- covbat_fh(dat = t(dat), bat = batch, mod = mod)
-  
-  return(covbat_output)
-}
-
 make_input_list <- function(raw, covariates, 
                             data_opts = c("raw", "residuals", "scaled_residuals"), 
-                            get_ps = FALSE) {
+                            get_ps = FALSE, get_combat_covbat = FALSE, ...) {
   cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, covariates)[, -1] # remove intercept
   batch <- as.matrix(model.matrix(~ manufac, covariates)[, -1]) # remove intercept
   
@@ -137,7 +131,11 @@ make_input_list <- function(raw, covariates,
     cov_norm <- range01(cov)
   }
   
-  covbat_output <- get_combat_resids(raw, batch, cov_norm)
+  covbat_output <- covbat_fh(dat = t(raw), bat = batch, mod = cov_norm, ...)
+  if (get_combat_covbat) {
+    return(list(combat = covbat_output$combat.out,
+                covbat = covbat_output))
+  }
   
   if (data_opts == "raw") {
     data <- raw
@@ -169,4 +167,8 @@ plot_latent_by_batch <- function(latent_tensor, batch) {
   print(summary_mat)
   
   ggplot(tall_df) + geom_density(aes(value, fill = V1), alpha = 0.5)
+}
+
+multiply_by_row <- function(mat, vec) {
+  mat * rep(vec, each = nrow(mat))
 }

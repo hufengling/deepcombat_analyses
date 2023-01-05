@@ -33,7 +33,7 @@ train_nn <- function(torch_dl, torch_model, torch_optim,
                      beta_mse = 1, beta_prior = 1, 
                      beta_ind = 1, beta_cov = 1,
                      anneal_rate = 0, 
-                     similarity_type = "ones", pairwise_type = "KL", recon_type = "nll",
+                     similarity_type = "ones", pairwise_type = "KL", recon_type = "mse",
                      batch_weights = c(1, 1)) {
   
   torch_model$train()

@@ -3,126 +3,600 @@ title: "scvi_analysis"
 output: html_document
 ---
 
+# Preprocessing
 ```{r}
 source("~/Documents/nnbatch/code/load_packages.R")
+all_raw <- read.csv("./data/raw.csv", header = F)
+all_cov <- read.csv("./data/covariates.csv")
+all_cov$SEX <- as.factor(all_cov$SEX)
+all_cov$DIAGNOSIS <- as.factor(all_cov$DIAGNOSIS)
+all_cov$Random <- as.factor(all_cov$Random)
+all_cov$manufac <- as.factor(all_cov$manufac)
+
+unique_cov <- all_cov %>% 
+  group_by(subid) %>% 
+  filter(VISIT == max(VISIT)) %>% 
+  as.data.frame()
+unique_raw <- all_raw[unique_cov$X.1, ]
+all_subjects <- read.csv("./data/corrected/0927_refbatch0_lessmeaneffect.csv")[, -1]
+unique_subjects <- read.csv("./data/corrected/1208_ccvae_fit.csv")[, -1]
+
+all_combat_covbat <- make_input_list(all_raw, all_cov, get_combat_covbat = TRUE)
+unique_combat_covbat <- make_input_list(unique_raw, unique_cov, get_combat_covbat = TRUE)
 ```
 
-## Reading in data
+## Feature matrix list
 ```{r}
-resids_matrix <- as.matrix(resid_output$resids)
-rescale_factor <- matrix(colSds(resids_matrix[covariates$manufac == "False", ]) / colSds(resids_matrix[covariates$manufac == "True", ]),
-                            ncol = 62, byrow = TRUE)
-resids_matrix[covariates$manufac == "True", ] <- resids_matrix[covariates$manufac == "True", ] * rep(1, dim(resids_matrix[covariates$manufac == "True", ])[1]) %*% rescale_factor
+unique_data_list <- list(unique_raw = unique_raw,
+                         unique_combat = t(unique_combat_covbat$combat$dat.combat),
+                         unique_covbat = t(unique_combat_covbat$covbat$dat.covbat),
+                         unique_cvae = unique_cvae,
+                         unique_gcvae = unique_gcvae) %>% append(deepcombat_harmonized)
+unique_data_list <- lapply(unique_data_list, as.matrix)
 
-covbat_resids <- covbat(t(as.matrix(resid_output$resids)), bat = batch, mod = cbind(cov_mod))#$dat.covbat %>% t()
-
-data_list <- list(#raw = raw,
-                  #cov = cov,
-                  combat = combat,
-                  covbat = covbat,
-                  vae_resids = vae_output$resids,
-                  vae_restyleresids = torch_tensor(raw_demean) + vae_output$resids_restyle,
-                  vae_combat = torch_tensor(raw_demean) + vae_output$restyle + resid_output$combat_restyle,
-                  vae_combat2 = torch_tensor(raw_demean) + vae_output$restyle + resid_output$combat + torch_tensor(resids_matrix),
-                  vae_combat3 = torch_tensor(raw_demean) + vae_output$restyle + resid_output$combat + torch_tensor(t(covbat_resids$combat.out$dat.combat)),
-                  vae_covbat = torch_tensor(raw_demean) + vae_output$restyle + resid_output$combat + torch_tensor(t(covbat_resids$dat.covbat)),
-                  #vae_recon = vae_output$recon,
-                  #vae_restyle = torch_tensor(raw_demean) + vae_output$restyle,
-                  #vae_corrected_resids = tx_resid_output$recon,
-                  #vae_corrected_restyle = tx_resid_output$combat_restyle,
-                  #vae_corrected_rr = vae_output$combat + resid_output$combat_restyle,
-                  #vae_corrected2_rr = torch_tensor(raw_demean) + vae_output$restyle + tx_resid_output$restyle,
-                  #vae_corrected3_rr = torch_tensor(raw_demean) + vae_output$restyle + torch_tensor(covbat_resids),
-                  #vae_corrected4_rr = vae_output$restyle + vae_output$resid - tx_resid_output$recon + tx_resid_output$combat_restyle,
-                  vae_mu = vae_output$latent_mu,
-                  resid_mu = vae_output$latent_mu
-                  #vae_combat_mu = vae_output$combat_restyle
-                  #resid_mu = tx_resid_output$latent_mu,
-                  #resid_mu_combat = tx_resid_output$combat
-                  )
-data_list <- lapply(data_list, as.matrix)
-
-## MSE from raw
-get_mse_mae(data_list[1:(length(data_list) - 1)], raw)
-
-## ANOVA test for scanner/biologic effects
-#anova_mat <- anova_tester(data_list, covariates); anova_mat[[2]]
-#                           AGE      SEXM DIAGNOSISCN DIAGNOSISLMCI RandomRandom_2 manufacTrue
-# raw                    287.800     9.791     250.900        92.570         0.5629   1.325e+02
-# combat                 287.800     9.791     250.900        92.570         0.5629   1.325e+02
-# covbat                 287.500     9.762     250.300        92.760         0.5779   7.266e-03
-
-## Plot UMAPs of data in thickness-space
-#umap_list <- umap_plotter(data_list, covariates, n_neighbors = 15, n_epochs = 30); umap_list
-
-## Random forest test for scanner/biologic effects
-rf_interval <- 1:length(data_list)
-rf_list <- rf_splitter(data_list[rf_interval], covariates, seed = 10)
-rf_error_df <- rf_tester(rf_list$train_list, rf_list$train_covariates, rf_list$test_list, rf_list$test_covariates, interval = rf_interval); rf_error_df
-#                               AGE       SEX  DIAGNOSIS    Random   manufac
-# raw                      42.42772 0.3701431 0.08433735 0.4130879 0.1492843
-# covariate_baseline       21.94670 0.0000000 0.00000000 0.4683027 0.4683027
-# combat                   41.91287 0.3926380 0.07692308 0.4560327 0.3537832
-# covbat                   40.58314 0.3844581 0.09210526 0.4683027 0.3824131
-# pred_resids              44.55263 0.3926380 0.12903226 0.4233129 0.3047034
-# pred_restyle             0.663932 0.0000000 0.00000000 0.5071575 0.4969325
-# lin_resids               39.33793 0.09202454 0.1393939 0.3844581 0.0756646
-# lin_restyle              0.037666 0.00000000 0.0000000 0.5112474 0.5051125
+# for (i in 1:length(unique_data_list)) {
+#   destination_path <- paste0("./data/for_paper/", names(unique_data_list)[[i]], ".csv")
+#   write.csv(unique_data_list[i], destination_path, row.names = F)
+# }
 ```
 
-## Silhouette test for whether longitudinal scans are clustered together
+## Declarations
 ```{r}
-mean_sub_sil_scores <- subject_silhouette_tester(data_list, covariates); mean_sub_sil_scores
+method_names <- c("Raw", "ComBat", "CovBat", "dcVAE", "gcVAE", "DeepComBat")
+lambda_names <-  c("Raw",
+                   TeX(r"(\lambda = 0.00625)"),
+                   TeX(r"(\lambda = 0.025)"), 
+                   TeX(r"(\lambda = 0.1)"),
+                   TeX(r"(\lambda = 0.4)"), 
+                   TeX(r"(\lambda = 1.6)"))
+# lambda_names <- c("Raw", "Lambda = 0.00625", "Lambda = 0.025", "Lambda = 0.1", 
+# "Lambda = 0.4", "Lambda = 1.6")
+methods_range <- 1:6
+lambdas_range <- c(1, 8, 7, 6, 9, 10)
 ```
 
-## Plots of overall, Siemens, GE/Phillips, and Difference covariance matrices
+# Statistical testing
+
+## Table 1
 ```{r}
-cov_list <- cov_generator(data_list, covariates)
-cov_plot_list <- cov_plotter(cov_list)
+adni_cov <- unique_cov %>%
+  dplyr::select(AGE, SEX, DIAGNOSIS, manufac, MMSCORE) %>%
+  mutate(SEX = ifelse(SEX == "M", "Male", "Female"),
+         DIAGNOSIS = case_when(
+           DIAGNOSIS == "LMCI" ~ "Late Mild Cognitive Impairment",
+           DIAGNOSIS == "CN" ~ "Cognitively Normal",
+           DIAGNOSIS == "AD" ~ "Alzheimer Disease"),
+         manufac = ifelse(manufac == "True", "Siemens", "Philips/GE")) %>%
+  mutate(DIAGNOSIS = factor(DIAGNOSIS, levels = c("Cognitively Normal", "Late Mild Cognitive Impairment", "Alzheimer Disease")),
+         SEX = factor(SEX, levels = c("Male", "Female")))
 
-lapply(cov_list, function(cov_mat) {
-  norm(cov_mat[[4]], type = "F")
-})
-```
+as_latex_with_caption <- function(gt, chunk_label) {
+  gt <- gt::as_latex(gt)
+  caption <- paste0(
+    "\\caption{\\label{tab:", chunk_label, "}(ref:", chunk_label, ")}\\\\")
+  latex <- strsplit(gt[1], split = "\n")[[1]]
+  latex <- c(latex[1], caption, latex[-1])
+  latex <- paste(latex, collapse = "\n")
+  gt[1] <- latex
+  return(gt)
+}
 
-## Plots of pre/post correction covariance matrices between subjects
-```{r}
-max_cor_matrix_list <- get_pre_post(data_list, similarity_type = "correlation", covariates, n_max = 10)
-post_post_cor_matrix <- get_pre_post(list(data_list[[2]], data_list[[2]]), similarity_type = "manhattan", covariates = covariates, n_max = 10)
-latent_cor_matrix <- get_pre_post(list(scvi_latent, scvi_latent), similarity_type = "euclidean", covariates = covariates, n_max = 10)
+theme_gtsummary_journal("nejm")
+tbl_summary(adni_cov, by = "manufac",
+            statistic = list(all_continuous() ~ "{mean} ({sd})",
+                             all_categorical() ~ "{n} ({p}%)"),
+            label = list("AGE" ~ "Age",
+                         "SEX" ~ "Sex",
+                         "DIAGNOSIS" ~ "Diagnosis",
+                         "MMSCORE" ~ "Mini-Mental State Examination Score"),
+            missing = "no",
+            digits = all_continuous() ~ 1) %>%
+  modify_caption("Table 1. Patient demographics at time of acquisition, stratified by scanner manufacturer.") %>%
+  bold_labels() %>% as_gt() %>%
+  gtsave(filename = "figures/demographics.png")
 
-pre_post_analyzer(max_cor_matrix_list, covariates)[[4]] %>% colSums()
-pre_post_analyzer(post_post_cor_matrix, covariates)[[1]] %>% colSums()
-```
-
-```{r}
-resid_df <- as.matrix(vae_output$resids) %>% as.data.frame() %>% 
-  cbind(manufac = covariates$manufac) %>% cbind(strength = covariates$strength) %>% cbind(true_man = covariates$Manufacturer) %>% 
-  cbind(sex = covariates$SEX) %>% cbind(diag = covariates$DIAGNOSIS)
-ggplot(resid_df) + geom_density(aes(V20, fill =  manufac), alpha = .5)
-ggplot(resid_df %>% filter(manufac == "True")) + geom_density(aes(V2, fill = strength), alpha = .5)
-ggplot(resid_df %>% filter(manufac == "False")) + geom_density(aes(V10, fill = strength), alpha = .5)
 ```
 
 ```{r}
-raw_resids_matrix <- data_list$combat_restyle - input_list$mean
-
-#colMeans(raw_resids_matrix[covariates$manufac == "False", ])
-#colMeans(raw_resids_matrix[covariates$manufac == "True", ])
-
-resids_matrix_0 <- raw_resids_matrix[covariates$manufac == "False", ]
-resids_matrix_1 <- raw_resids_matrix[covariates$manufac == "True", ]
-
-cov_ratio <- cov(resids_matrix_1) / cov(resids_matrix_0)
-cor_ratio <- cor(resids_matrix_1) / cor(resids_matrix_0)
-
-mean(cov_ratio > 1)
-mean(cor_ratio > 1)
-
-norm(cov(resids_matrix_1) - cov(resids_matrix_0), type = "F")
+manufac_stats <- stats_tester(unique_data_list, unique_cov)
+manufac_stats
 ```
 
+## LR methods table
 ```{r}
-mod_lm <- lm()
+methods_lr <- manufac_stats$lr
+methods_lr <- methods_lr[methods_range, c(1, 12:21)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset)
+methods_lr[, 2:6] <- methods_lr[, 2:6] * -1
+methods_lr$Method <- method_names
+methods_lr <- methods_lr %>% 
+  mutate(c = paste0(AGE_log, " (", AGE_log_SD, ")"),
+         SEXM_log = paste0(SEXM_log, " (", SEXM_log_SD, ")"),
+         DIAGNOSISCN_log = paste0(DIAGNOSISCN_log, " (", DIAGNOSISCN_log_SD, ")"),
+         DIAGNOSISLMCI_log = paste0(DIAGNOSISLMCI_log, " (", DIAGNOSISLMCI_log_SD, ")"),
+         manufacTrue_log = paste0(manufacTrue_log, " (", manufacTrue_log_SD, ")"))
+methods_lr <- methods_lr[, 1:6]
+
+gt(methods_lr, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 2. Feature-wise linear regression results, reported as negative log 10 p-values — Mean (SD)")) %>% 
+  cols_label(.list = list(AGE_log = md("**Age**"),
+                          SEXM_log = md("**Sex**"),
+                          DIAGNOSISCN_log = md("**AD Status (CN)**"),
+                          DIAGNOSISLMCI_log = md("**AD Status (LMCI)**"),
+                          manufacTrue_log = md("**Batch**"))) %>% 
+  gtsave(filename = "figures/lr_methods.png")
 ```
 
+## MANOVA methods table
+```{r}
+methods_manova <- manufac_stats$manova %>% 
+  rename(Age = AGE_log, Sex = SEX_log, `AD status` = DIAGNOSIS_log, Batch = manufac_log)
+methods_manova <- methods_manova[methods_range, c(1, 6:9)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset)
+methods_manova$Method <- method_names
+methods_manova[, -1] <- methods_manova[, -1] * -1
+
+gt(methods_manova, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 2. Multivariate analysis of variance results, reported as negative log 10 p-values.")) %>% 
+  cols_label(.list = list(Age = md("**Age**"),
+                          Sex = md("**Sex**"),
+                          `AD status` = md("**AD Status**"),
+                          Batch = md("**Batch**")))# %>% 
+#gtsave(filename = "figures/manova.png")
+```
+
+## MANOVA lambdas table
+```{r}
+lambdas_manova <- manufac_stats$manova %>% 
+  rename(Age = AGE_log, Sex = SEX_log, `AD status` = DIAGNOSIS_log, Batch = manufac_log)
+lambdas_manova <- lambdas_manova[lambdas_range, c(1, 6:9)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset)
+lambdas_manova$Method <- lambda_names
+lambdas_manova[, -1] <- lambdas_manova[, -1] * -1
+
+gt(lambdas_manova, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 2. Multivariate analysis of variance results, reported as negative log 10 p-values.")) %>% 
+  cols_label(.list = list(Age = md("**Age**"),
+                          Sex = md("**Sex**"),
+                          `AD status` = md("**AD Status**"),
+                          Batch = md("**Batch**")))# %>% 
+#gtsave(filename = "figures/manova.png")
+```
+
+## AD methods table
+```{r}
+methods_ad <- manufac_stats$ad %>% 
+  rename(`Log 10 p-value` = pval_log, SD = pval_log_SD)
+methods_ad <- methods_ad[methods_range, c(1, 4:5)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset) %>% 
+  mutate(`Log 10 p-value` = `Log 10 p-value` * -1) %>% 
+  mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
+methods_ad$Method <- method_names
+methods_ad <- methods_ad[, -3]
+
+gt(methods_ad, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 3. Anderson-Darling results across batch.")) %>% 
+  cols_label(.list = list(`Log 10 p-value` = md("**Mean (SD)**")))# %>% 
+#gtsave(filename = "figures/manova.png")
+```
+
+## AD lambdas table
+```{r}
+lambdas_ad <- manufac_stats$ad %>% 
+  rename(`Log 10 p-value` = pval_log, SD = pval_log_SD)
+lambdas_ad <- lambdas_ad[lambdas_range, c(1, 4:5)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset) %>% 
+  mutate(`Log 10 p-value` = `Log 10 p-value` * -1) %>% 
+  mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
+lambdas_ad$Method <- lambda_names
+lambdas_ad <- lambdas_ad[, -3]
+
+gt(lambdas_ad, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 3. Anderson-Darling results across batch.")) %>% 
+  cols_label(.list = list(`Log 10 p-value` = md("**Mean (SD)**"))) %>% as_latex()# %>% 
+#gtsave(filename = "figures/manova.png")
+```
+
+# ML experiments
+```{r}
+manufac_results <- ml_cv_tester(unique_data_list, 1:10, final_visits_covariates, 
+                                outcome = "manufac",
+                                k_fold = 10, repeats = 5, verbose = F)
+age_results <- ml_cv_tester(unique_data_list, 1:10, final_visits_covariates, 
+                            outcome = "AGE",
+                            k_fold = 10, repeats = 5, verbose = F)
+sex_results <- ml_cv_tester(unique_data_list, 1:10, final_visits_covariates, 
+                            outcome = "SEX",
+                            k_fold = 10, repeats = 5, verbose = F)
+diagnosis_results <- ml_cv_tester(unique_data_list, 1:10, final_visits_covariates, 
+                                  outcome = "DIAGNOSIS",
+                                  k_fold = 10, repeats = 5, verbose = F)
+```
+
+## Manufac ML experiments figures
+```{r}
+manufac_methods <- manufac_results[methods_range]
+manufac_lambdas <- manufac_results[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "LDA", "QDA", "LogitBoost", "GLM", "FCNN")
+
+manufac_methods_df <- bind_rows(manufac_methods) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(manufac_methods))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(method_names, each = length(ml_names))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+manufac_methods <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = ROC, 
+                                                  fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_brewer(palette = "Paired", name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/manufac_methods.png", 
+       plot = manufac_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## Manufac ML Lambdas figure
+```{r}
+manufac_lambdas_df <- bind_rows(manufac_lambdas) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(manufac_lambdas))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = length(ml_names))))
+manufac_lambdas_df$harm_method_releveled = factor(manufac_lambdas_df$harm_method, 
+                                                  labels = lambda_names)
+
+manufac_lambdas <- ggplot(manufac_lambdas_df, aes(x = algorithm_releveled, y = ROC, 
+                                                  fill = harm_method), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) +
+  scale_fill_brewer(palette = "Paired", labels = unname(lambda_names), name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/manufac_lambdas.png", 
+       plot = manufac_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## SEX ML experiments figures
+```{r}
+sex_methods <- sex_results[methods_range]
+sex_lambdas <- sex_results[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "LDA", "QDA", "LogitBoost", "GLM", "FCNN")
+
+sex_methods_df <- bind_rows(sex_methods) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(sex_methods))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(method_names, each = length(ml_names))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+sex_methods <- ggplot(sex_methods_df, aes(x = algorithm_releveled, y = ROC, 
+                                          fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_brewer(palette = "Paired", name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/sex_methods.png", 
+       plot = sex_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## SEX ML Lambdas figure
+```{r}
+sex_lambdas_df <- bind_rows(sex_lambdas) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(sex_lambdas))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = length(ml_names))))
+sex_lambdas_df$harm_method_releveled = factor(sex_lambdas_df$harm_method, 
+                                              labels = lambda_names)
+
+sex_lambdas <- ggplot(sex_lambdas_df, aes(x = algorithm_releveled, y = ROC, 
+                                          fill = harm_method), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) +
+  scale_fill_brewer(palette = "Paired", labels = unname(lambda_names), name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/sex_lambdas.png", 
+       plot = sex_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## DIAGNOSIS ML experiments figures
+```{r}
+diagnosis_methods <- diagnosis_results[methods_range]
+diagnosis_lambdas <- diagnosis_results[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "LDA", "QDA", "LogitBoost", "FCNN")
+
+diagnosis_methods_df <- bind_rows(diagnosis_methods) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(diagnosis_methods))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(method_names, each = length(ml_names))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+diag_methods <- ggplot(diagnosis_methods_df, aes(x = algorithm_releveled, y = Accuracy, 
+                                                 fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
+                position = position_dodge(.9)) + 
+  scale_fill_brewer(palette = "Paired", name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/diag_methods.png", 
+       plot = diag_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## DIAGNOSIS ML Lambdas figure
+```{r}
+diagnosis_lambdas_df <- bind_rows(diagnosis_lambdas) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(diagnosis_lambdas))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "LDA", "QDA", "SVM (Radial)", 
+                                           "KNN", "LogitBoost", "FCNN", "RF"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = length(ml_names))))
+diagnosis_lambdas_df$harm_method_releveled = factor(diagnosis_lambdas_df$harm_method, 
+                                                    labels = lambda_names)
+
+diag_lambdas <- ggplot(diagnosis_lambdas_df, aes(x = algorithm_releveled, y = Accuracy, 
+                                                 fill = harm_method), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
+                position = position_dodge(.9)) +
+  scale_fill_brewer(palette = "Paired", labels = unname(lambda_names), name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/diag_lambdas.png", 
+       plot = diag_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## AGE ML experiments figures
+```{r}
+age_methods <- age_results[methods_range]
+age_lambdas <- age_results[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "GLM")
+
+age_methods_df <- bind_rows(age_methods) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(age_methods))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "SVM (Radial)", 
+                                           "KNN", "RF"),
+         harm_method = as.factor(rep(method_names, each = length(ml_names))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+age_methods <- ggplot(age_methods_df, aes(x = algorithm_releveled, y = Rsquared, 
+                                          fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_brewer(palette = "Paired", name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/age_methods.png", 
+       plot = age_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## AGE ML Lambdas figure
+```{r}
+age_lambdas_df <- bind_rows(age_lambdas) %>% 
+  mutate(algorithm = as.factor(rep(ml_names, length(age_lambdas))),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "GLM", "SVM (Radial)", 
+                                           "KNN", "RF"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = length(ml_names))))
+age_lambdas_df$harm_method_releveled = factor(age_lambdas_df$harm_method, 
+                                              labels = lambda_names)
+
+age_lambdas <- ggplot(age_lambdas_df, aes(x = algorithm_releveled, y = Rsquared, 
+                                          fill = harm_method), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
+                position = position_dodge(.9)) +
+  scale_fill_brewer(palette = "Paired", labels = unname(lambda_names), name = "Methods") + 
+  xlab("Machine Learning Algorithm") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+ggsave(filename = "figures/plots/age_lambdas.png", 
+       plot = age_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+# Qualitative visualizations
+
+## Methods UMAP
+```{r}
+methods_umap_list <- umap_plotter(unique_data_list[methods_range], unique_cov, 
+                                  plot_names = method_names,
+                                  n_neighbors = 20, n_epochs = 100); methods_umap_list
+ggsave(filename = "figures/plots/methods_umap.png", 
+       plot = methods_umap_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+lambdas_umap_list <- umap_plotter(unique_data_list[lambdas_range], unique_cov, 
+                                  plot_names = lambda_names,
+                                  n_neighbors = 20, n_epochs = 100); lambdas_umap_list
+ggsave(filename = "figures/plots/lambdas_umap.png", 
+       plot = lambdas_umap_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## Methods PCA
+```{r}
+methods_pca_list <- pca_plotter(unique_data_list[methods_range], unique_cov, 
+                                plot_names = method_names); methods_pca_list
+ggsave(filename = "figures/plots/methods_pca.png", 
+       plot = methods_pca_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+lambdas_pca_list <- pca_plotter(unique_data_list[lambdas_range], unique_cov, 
+                                plot_names = lambda_names); lambdas_pca_list
+ggsave(filename = "figures/plots/lambdas_pca.png", 
+       plot = lambdas_pca_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## Correlation matrices
+```{r}
+methods_cor_list <- cor_plotter(unique_data_list[methods_range], unique_cov, 
+                                plot_names = method_names); methods_cor_list
+ggsave(filename = "figures/plots/methods_cor.png", 
+       plot = methods_cor_list, 
+       width = 2128, height = 1200, units = "px", type = "cairo-png")
+
+lambdas_cor_list <- cor_plotter(unique_data_list[lambdas_range], unique_cov, 
+                                plot_names = lambda_names); lambdas_cor_list
+ggsave(filename = "figures/plots/lambdas_cor.png", 
+       plot = lambdas_cor_list, 
+       width = 2128, height = 1200, units = "px", type = "cairo-png")
+```
+
+## Feature-wise distributions
+```{r}
+methods_feature_list <- feature_plotter(unique_data_list[methods_range], 
+                                        unique_cov, 
+                                        plot_names = method_names, col_num = 7); methods_feature_list
+ggsave(filename = "figures/plots/methods_feature.png", 
+       plot = methods_feature_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+lambdas_feature_list <- feature_plotter(unique_data_list[lambdas_range], unique_cov, 
+                                        plot_names = lambda_names, col_num = 7); lambdas_feature_list
+ggsave(filename = "figures/plots/lambdas_feature.png", 
+       plot = lambdas_feature_list, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## Harmonized against Raw figure
+```{r}
+methods_raw <- plot_against_raw(unique_data_list[methods_range], unique_raw, 
+                                plot_names = method_names,
+                                col_num = 10, row_num = 100); methods_raw
+ggsave(filename = "figures/plots/methods_raw.png", 
+       plot = methods_raw, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+lambdas_raw <- plot_against_raw(unique_data_list[lambdas_range], unique_raw, 
+                                plot_names = lambda_names,
+                                col_num = 10, row_num = 100); lambdas_raw
+ggsave(filename = "figures/plots/lambdas_raw.png", 
+       plot = lambdas_raw, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+```
+
+## Correlations with Raw (Bad?)
+```{r}
+vectorized_data_list <- lapply(unique_data_list, as.numeric) %>% 
+  unlist() %>% 
+  matrix(ncol = length(unique_data_list), byrow = F) %>% 
+  as.data.frame()
+
+vectorized_methods <- vectorized_data_list[, methods_range]
+names(vectorized_methods) <- method_names
+corrplot(round(cor(vectorized_methods), 2),
+         type = "lower", method = "number", diag = F,
+         col.lim = c(0, 1))
+
+vectorized_lambdas <- vectorized_data_list[, lambdas_range]
+names(vectorized_lambdas) <-
+  corrplot(round(cor(vectorized_lambdas), 2),
+           type = "lower", method = "number", diag = F,
+           col.lim = c(0, 1))
+```
+
+# Latent log variance distributions
+```{r}
+latentvars_df <- bind_rows(deepcombat_latentvars, .id = "column_label")
+latentvars_df_long <- pivot_longer(latentvars_df, cols = starts_with("V"))
+latentvars_df_long <- latentvars_df_long %>% 
+  mutate(column_label = case_when(
+    column_label == "big" ~ "D", 
+    column_label == "waybig" ~ "E", 
+    column_label == "optimal" ~ "C", 
+    column_label == "small" ~ "B", 
+    column_label == "waysmall" ~ "A" 
+  ))
+
+latentvars_df_long$column_label2 <- factor(latentvars_df_long$column_label, 
+                                           labels = lambda_names[-1])
+
+latentvars_overall <- ggplot(latentvars_df_long) + 
+  geom_density(aes(value),  
+               fill = "gray69", color = "gray20", alpha = 0.3) + 
+  facet_wrap(~column_label2, 
+             scales = "free", nrow = 1, 
+             labeller = label_parsed) +
+  theme_classic() +
+  xlab("Log Variance") + 
+  scale_x_continuous(limits = c(-7.5, 0.5)) +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 12)) +
+  scale_color_brewer(palette = "Paired"); latentvars_overall
+
+latentvars_bydim <- ggplot(latentvars_df_long) + 
+  geom_density(aes(value, fill = name),  
+               color = "gray30", alpha = 0.4) + 
+  facet_wrap(~column_label2, 
+             scales = "free", nrow = 1, 
+             labeller = label_parsed) +
+  theme_classic() +
+  xlab("Log Variance") + 
+  scale_x_continuous(limits = c(-7.5, 0.5)) +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text.x = element_blank()); latentvars_bydim
+
+logvar_plot <- ggarrange(plotlist = list(latentvars_overall, latentvars_bydim), 
+                         nrow = 2)
+ggsave(filename = "figures/plots/logvar_plot.png", 
+       plot = logvar_plot, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```

@@ -1,0 +1,70 @@
+---
+title: "gcVAE_processing"
+output: html_document
+---
+
+# Process data so Alfredo can run gcVAE
+```{r}
+source("./code/load_packages.R")
+
+all_raw <- read.csv("./data/raw.csv", header = F)
+all_cov <- read.csv("./data/covariates.csv")
+all_cov$SEX <- as.factor(all_cov$SEX)
+all_cov$DIAGNOSIS <- as.factor(all_cov$DIAGNOSIS)
+all_cov$Random <- as.factor(all_cov$Random)
+all_cov$manufac <- as.factor(all_cov$manufac)
+
+unique_cov <- all_cov %>% group_by(subid) %>% filter(VISIT == max(VISIT))
+unique_raw <- all_raw[unique_cov$X.1, ]
+
+df_cov <- unique_cov %>% 
+  as.data.frame() %>% 
+  mutate(RID = 1:nrow(unique_cov)) %>% 
+  select(RID, EXAM_DATE, DIAGNOSIS, manufac, AGE, SEX, MMSCORE) %>% 
+  rename(EXAMDATE = EXAM_DATE, DX = DIAGNOSIS, SITE = manufac, MMSE = MMSCORE) %>% 
+  mutate(DX = case_when(DX == "CN" ~ 0,
+                        DX == "LMCI" ~ 1,
+                        DX == "AD" ~ 2),
+         SITE = ifelse(SITE == "True", 1, 0),
+         SEX = ifelse(SEX == "M", 1, 0))
+
+final_df <- cbind(df_cov, unique_raw)
+write.csv(final_df, "./data/unique_alfredo.csv", row.names = FALSE)
+```
+
+# Process gcVAE output so I can use it...
+```{r}
+convert_from_gcvae_output <- function(gcvae_or_cvae) {
+  if (!gcvae_or_cvae %in% c("gcvae", "cvae"))
+    stop("gcvae_or_cvae must be either 'gcvae' or 'cvae'")
+  
+  if (gcvae_or_cvae == "gcvae") {
+    yeo_output <- list(read.csv("./data/gcVAE_Feng_Alfredo/gcVAE/unmatch2match_train-map2ADNI.csv"),
+                    read.csv("./data/gcVAE_Feng_Alfredo/gcVAE/unmatch2match_val-map2ADNI.csv"),
+                    read.csv("./data/gcVAE_Feng_Alfredo/gcVAE/unmatch2match_test-map2ADNI.csv"))
+  } else if (gcvae_or_cvae == "cvae") {
+    yeo_output <- list(read.csv("./data/gcVAE_Feng_Alfredo/cVAE/unmatch2match_train-map2ADNI.csv"),
+                   read.csv("./data/gcVAE_Feng_Alfredo/cVAE/unmatch2match_val-map2ADNI.csv"),
+                   read.csv("./data/gcVAE_Feng_Alfredo/cVAE/unmatch2match_test-map2ADNI.csv"))
+  }
+  yeo_output <- rbind(yeo_output[[1]], yeo_output[[2]], yeo_output[[3]])
+  
+  yeo_output <- yeo_output %>% 
+    mutate(DX = case_when(DX == 0 ~ "CN",
+                          DX == 1 ~ "LMCI",
+                          DX == 2 ~ "AD"),
+           SITE = ifelse(SITE == 1, "True", "False"),
+           SEX = ifelse(SEX == 1, "M", "F")) %>% 
+    rename(EXAM_DATE = EXAMDATE, DIAGNOSIS = DX, manufac = SITE, MMSCORE = MMSE) %>% 
+    mutate(AGE = round(AGE, digits = 3))
+  tmp_unique_cov <- unique_cov %>% mutate(AGE = round(AGE, digits = 3))
+  yeo_output <- left_join(tmp_unique_cov, yeo_output, by = c("EXAM_DATE", "DIAGNOSIS", "manufac", "AGE", "SEX", "MMSCORE"))
+  
+  formatted_output <- yeo_output[, (ncol(yeo_output) - 61):ncol(yeo_output)]
+  
+  return(formatted_output)
+}
+
+unique_gcvae <- convert_from_gcvae_output("gcvae")
+unique_cvae <- convert_from_gcvae_output("cvae")
+```
