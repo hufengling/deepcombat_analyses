@@ -1,0 +1,664 @@
+"AGE","SEX","DIAGNOSIS","manufac","MMSCORE"
+88,"Male","Cognitively Normal","Philips/GE",28
+79.3945,"Female","Cognitively Normal","Philips/GE",29
+82.4767,"Male","Cognitively Normal","Philips/GE",29
+78.6082,"Male","Alzheimer Disease","Philips/GE",19
+92.7808,"Female","Cognitively Normal","Philips/GE",23
+68.3315,"Female","Late Mild Cognitive Impairment","Philips/GE",23
+84.7671,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+72.2849,"Male","Alzheimer Disease","Philips/GE",NA
+83.3096,"Female","Alzheimer Disease","Philips/GE",22
+71.0795,"Female","Late Mild Cognitive Impairment","Philips/GE",27
+72.7918,"Female","Alzheimer Disease","Philips/GE",27
+76.7616,"Male","Late Mild Cognitive Impairment","Philips/GE",5
+61.0575,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+74.2877,"Female","Cognitively Normal","Philips/GE",30
+85.8986,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+73.8521,"Female","Cognitively Normal","Philips/GE",30
+90.8904,"Female","Cognitively Normal","Siemens",NA
+65.1068,"Female","Late Mild Cognitive Impairment","Siemens",NA
+84.9753,"Female","Cognitively Normal","Siemens",30
+62.5644,"Female","Late Mild Cognitive Impairment","Siemens",28
+87.4658,"Female","Late Mild Cognitive Impairment","Siemens",29
+78.9151,"Female","Late Mild Cognitive Impairment","Siemens",30
+69.7014,"Male","Alzheimer Disease","Philips/GE",15
+88.0877,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+81.2521,"Female","Cognitively Normal","Philips/GE",27
+78.5288,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+87.811,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+81.8274,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+88.0986,"Male","Cognitively Normal","Philips/GE",30
+81.9863,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+74.0795,"Male","Cognitively Normal","Philips/GE",25
+82.3233,"Male","Cognitively Normal","Philips/GE",30
+73.1918,"Female","Alzheimer Disease","Philips/GE",17
+82.8712,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+73.7288,"Female","Alzheimer Disease","Philips/GE",23
+72.8877,"Male","Cognitively Normal","Philips/GE",28
+77.0082,"Male","Alzheimer Disease","Philips/GE",24
+81.3836,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+79.2247,"Female","Cognitively Normal","Philips/GE",28
+73.7863,"Male","Cognitively Normal","Philips/GE",29
+72.9589,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+74.0603,"Female","Late Mild Cognitive Impairment","Philips/GE",23
+77.5589,"Female","Cognitively Normal","Philips/GE",28
+74.6959,"Male","Cognitively Normal","Philips/GE",26
+75.6658,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+66.2301,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+74.1096,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+89.8466,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+83.0849,"Male","Alzheimer Disease","Philips/GE",21
+80.926,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+81.7616,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+77.5616,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+75.0493,"Male","Cognitively Normal","Philips/GE",30
+76.5288,"Female","Cognitively Normal","Philips/GE",29
+75.3534,"Female","Alzheimer Disease","Philips/GE",24
+81.7589,"Female","Alzheimer Disease","Philips/GE",21
+72.0384,"Male","Cognitively Normal","Philips/GE",30
+74.3205,"Male","Cognitively Normal","Philips/GE",30
+74.5644,"Female","Cognitively Normal","Philips/GE",30
+68.5671,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+76.7836,"Male","Cognitively Normal","Philips/GE",30
+73.4192,"Male","Cognitively Normal","Philips/GE",27
+64.9233,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+74.5178,"Male","Cognitively Normal","Philips/GE",30
+76.7753,"Male","Alzheimer Disease","Philips/GE",21
+67.011,"Female","Alzheimer Disease","Philips/GE",24
+86.3315,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+83.3781,"Male","Alzheimer Disease","Siemens",19
+76.8274,"Male","Cognitively Normal","Siemens",30
+75.9726,"Female","Alzheimer Disease","Siemens",28
+68.5753,"Male","Cognitively Normal","Siemens",26
+74.8274,"Female","Cognitively Normal","Siemens",29
+64.3014,"Male","Cognitively Normal","Siemens",27
+74.9507,"Male","Cognitively Normal","Siemens",28
+82.2247,"Male","Alzheimer Disease","Siemens",18
+74.6027,"Female","Alzheimer Disease","Siemens",19
+84.9425,"Male","Late Mild Cognitive Impairment","Siemens",29
+78.5205,"Male","Late Mild Cognitive Impairment","Siemens",25
+72.6192,"Female","Late Mild Cognitive Impairment","Siemens",24
+62.3973,"Male","Late Mild Cognitive Impairment","Siemens",NA
+90.2685,"Male","Late Mild Cognitive Impairment","Siemens",16
+84.5863,"Male","Late Mild Cognitive Impairment","Siemens",24
+80.2027,"Female","Late Mild Cognitive Impairment","Siemens",16
+85.3342,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+79.3726,"Female","Cognitively Normal","Philips/GE",30
+65.6822,"Male","Alzheimer Disease","Philips/GE",10
+77.7479,"Male","Alzheimer Disease","Philips/GE",22
+78.5808,"Female","Alzheimer Disease","Philips/GE",20
+86.8767,"Female","Alzheimer Disease","Philips/GE",15
+77.4712,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+78.0137,"Male","Cognitively Normal","Philips/GE",28
+74.4521,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+82.0603,"Female","Cognitively Normal","Philips/GE",30
+83.5808,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+75.9452,"Female","Cognitively Normal","Philips/GE",27
+77.8767,"Male","Late Mild Cognitive Impairment","Philips/GE",15
+85.3178,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+90.5096,"Male","Late Mild Cognitive Impairment","Siemens",27
+72.3589,"Female","Late Mild Cognitive Impairment","Siemens",28
+78.2658,"Male","Cognitively Normal","Siemens",28
+88.589,"Female","Cognitively Normal","Siemens",29
+85.8438,"Male","Late Mild Cognitive Impairment","Siemens",27
+93.0219,"Female","Alzheimer Disease","Siemens",21
+90.3726,"Male","Cognitively Normal","Siemens",29
+79.0164,"Female","Late Mild Cognitive Impairment","Siemens",23
+85.4384,"Male","Late Mild Cognitive Impairment","Siemens",28
+85.2932,"Male","Alzheimer Disease","Siemens",NA
+80.1068,"Female","Late Mild Cognitive Impairment","Siemens",30
+75.0658,"Female","Cognitively Normal","Siemens",30
+75.1123,"Female","Late Mild Cognitive Impairment","Philips/GE",27
+77.7479,"Male","Alzheimer Disease","Philips/GE",16
+80.8932,"Female","Cognitively Normal","Philips/GE",30
+76.9233,"Female","Cognitively Normal","Philips/GE",29
+74.2603,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+83.074,"Male","Cognitively Normal","Philips/GE",30
+82.863,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+75.3014,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+81.5233,"Female","Alzheimer Disease","Philips/GE",23
+77.2164,"Male","Late Mild Cognitive Impairment","Siemens",27
+84.6027,"Female","Cognitively Normal","Siemens",30
+86.0192,"Male","Cognitively Normal","Siemens",28
+86.4082,"Male","Late Mild Cognitive Impairment","Siemens",27
+63.8767,"Male","Late Mild Cognitive Impairment","Siemens",29
+88.8466,"Female","Alzheimer Disease","Siemens",18
+78.5205,"Female","Late Mild Cognitive Impairment","Siemens",19
+71.2849,"Female","Late Mild Cognitive Impairment","Siemens",26
+59.2849,"Female","Late Mild Cognitive Impairment","Siemens",11
+68.4603,"Male","Late Mild Cognitive Impairment","Siemens",24
+77.5315,"Male","Cognitively Normal","Philips/GE",29
+76.9616,"Male","Cognitively Normal","Philips/GE",30
+79.5644,"Male","Late Mild Cognitive Impairment","Philips/GE",20
+86.1726,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+76.3041,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+80.8247,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+83.2274,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+68.1041,"Male","Alzheimer Disease","Philips/GE",17
+85.7753,"Female","Alzheimer Disease","Philips/GE",22
+79.3123,"Male","Cognitively Normal","Philips/GE",28
+80.0384,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+88,"Male","Cognitively Normal","Philips/GE",27
+71.7014,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+85.4932,"Male","Alzheimer Disease","Philips/GE",15
+69.1178,"Male","Alzheimer Disease","Philips/GE",22
+75.0904,"Female","Cognitively Normal","Siemens",30
+64.2877,"Male","Alzheimer Disease","Siemens",23
+79.3096,"Female","Cognitively Normal","Siemens",28
+83.3014,"Female","Cognitively Normal","Siemens",29
+63.074,"Male","Cognitively Normal","Siemens",30
+84.2466,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+81.0959,"Female","Cognitively Normal","Philips/GE",30
+62.4466,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+65.9945,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+74.0466,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+71.074,"Male","Late Mild Cognitive Impairment","Siemens",21
+78.9616,"Male","Cognitively Normal","Philips/GE",29
+73.937,"Male","Alzheimer Disease","Philips/GE",14
+82.2658,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+84.926,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+85.2192,"Male","Alzheimer Disease","Philips/GE",23
+75.0795,"Male","Cognitively Normal","Philips/GE",30
+67.7479,"Male","Alzheimer Disease","Philips/GE",17
+79.8548,"Male","Cognitively Normal","Philips/GE",30
+79.4548,"Female","Alzheimer Disease","Philips/GE",17
+68.874,"Male","Late Mild Cognitive Impairment","Siemens",26
+81.7178,"Female","Cognitively Normal","Siemens",29
+77.9151,"Male","Cognitively Normal","Siemens",29
+82.863,"Male","Cognitively Normal","Siemens",30
+82.3205,"Female","Alzheimer Disease","Siemens",22
+76.3041,"Male","Cognitively Normal","Siemens",29
+74.3041,"Female","Alzheimer Disease","Siemens",10
+78.7699,"Female","Late Mild Cognitive Impairment","Siemens",23
+77.7562,"Female","Late Mild Cognitive Impairment","Siemens",8
+75.011,"Male","Late Mild Cognitive Impairment","Siemens",23
+75.2411,"Male","Late Mild Cognitive Impairment","Siemens",24
+74.0192,"Female","Late Mild Cognitive Impairment","Siemens",29
+80.2822,"Male","Late Mild Cognitive Impairment","Siemens",11
+83.1753,"Female","Late Mild Cognitive Impairment","Siemens",22
+80.9753,"Female","Cognitively Normal","Siemens",29
+74.9753,"Male","Late Mild Cognitive Impairment","Siemens",22
+73.2301,"Male","Cognitively Normal","Siemens",29
+80.2822,"Female","Cognitively Normal","Siemens",28
+77.6986,"Female","Late Mild Cognitive Impairment","Siemens",9
+73.8164,"Male","Cognitively Normal","Siemens",29
+75.3945,"Male","Alzheimer Disease","Siemens",23
+76.5041,"Female","Alzheimer Disease","Siemens",25
+79.4301,"Female","Alzheimer Disease","Siemens",4
+80.8082,"Female","Late Mild Cognitive Impairment","Siemens",22
+68.0493,"Female","Alzheimer Disease","Siemens",22
+84.726,"Female","Late Mild Cognitive Impairment","Siemens",27
+67.7151,"Female","Late Mild Cognitive Impairment","Siemens",23
+73.6329,"Male","Late Mild Cognitive Impairment","Siemens",29
+74.3151,"Male","Late Mild Cognitive Impairment","Siemens",20
+89.6959,"Male","Late Mild Cognitive Impairment","Siemens",24
+78.1397,"Male","Late Mild Cognitive Impairment","Siemens",22
+77.2548,"Male","Late Mild Cognitive Impairment","Siemens",25
+75.8247,"Female","Late Mild Cognitive Impairment","Siemens",15
+81.811,"Male","Alzheimer Disease","Siemens",13
+74.2986,"Female","Cognitively Normal","Siemens",30
+75.6986,"Male","Cognitively Normal","Siemens",30
+74.7342,"Male","Late Mild Cognitive Impairment","Siemens",28
+65.1589,"Female","Late Mild Cognitive Impairment","Siemens",25
+82.6658,"Male","Late Mild Cognitive Impairment","Siemens",28
+79.7616,"Female","Cognitively Normal","Siemens",29
+74.6658,"Female","Late Mild Cognitive Impairment","Siemens",21
+74.863,"Female","Alzheimer Disease","Siemens",10
+77.9534,"Female","Alzheimer Disease","Siemens",23
+81.8,"Male","Cognitively Normal","Philips/GE",29
+81.5726,"Female","Cognitively Normal","Philips/GE",29
+73.611,"Male","Alzheimer Disease","Philips/GE",21
+76.3945,"Female","Alzheimer Disease","Philips/GE",24
+83.6822,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+81.4247,"Male","Cognitively Normal","Philips/GE",30
+81.6219,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+83.5863,"Male","Cognitively Normal","Philips/GE",25
+75.2027,"Male","Cognitively Normal","Philips/GE",29
+82.9918,"Male","Late Mild Cognitive Impairment","Philips/GE",20
+73.3123,"Male","Late Mild Cognitive Impairment","Philips/GE",16
+81.61,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+79.4027,"Male","Cognitively Normal","Siemens",28
+89.9288,"Female","Alzheimer Disease","Siemens",20
+85.4082,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+80.9068,"Male","Late Mild Cognitive Impairment","Philips/GE",19
+80.9123,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+64.989,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+77.2055,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+75.8904,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+80.3205,"Male","Alzheimer Disease","Philips/GE",20
+85.7589,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+86.6767,"Male","Alzheimer Disease","Siemens",22
+71.6329,"Female","Alzheimer Disease","Siemens",5
+76.8822,"Female","Late Mild Cognitive Impairment","Philips/GE",18
+86.4795,"Male","Alzheimer Disease","Philips/GE",18
+87.4466,"Male","Late Mild Cognitive Impairment","Siemens",24
+71.589,"Female","Alzheimer Disease","Siemens",23
+87.8301,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+79.4,"Female","Cognitively Normal","Philips/GE",29
+84.3288,"Male","Alzheimer Disease","Philips/GE",26
+73.8438,"Male","Cognitively Normal","Philips/GE",28
+83.5123,"Male","Cognitively Normal","Philips/GE",27
+82.2192,"Female","Cognitively Normal","Philips/GE",30
+75.6384,"Male","Late Mild Cognitive Impairment","Philips/GE",17
+77.8986,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+72.2192,"Male","Alzheimer Disease","Philips/GE",11
+73.3315,"Female","Alzheimer Disease","Philips/GE",13
+68.9178,"Female","Late Mild Cognitive Impairment","Philips/GE",21
+80.6055,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+87.674,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+86.2521,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+74.2384,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+81.3014,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+69.4329,"Male","Alzheimer Disease","Philips/GE",25
+70.5123,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+73.7781,"Male","Alzheimer Disease","Philips/GE",16
+81.4247,"Female","Late Mild Cognitive Impairment","Philips/GE",22
+73.9397,"Male","Late Mild Cognitive Impairment","Siemens",28
+72.937,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+75.5699,"Male","Late Mild Cognitive Impairment","Siemens",18
+74.1562,"Female","Alzheimer Disease","Siemens",25
+72.4219,"Male","Cognitively Normal","Philips/GE",27
+61.989,"Female","Alzheimer Disease","Philips/GE",10
+79.2822,"Male","Late Mild Cognitive Impairment","Philips/GE",18
+68.2,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+71.3781,"Male","Alzheimer Disease","Philips/GE",16
+75.6027,"Female","Cognitively Normal","Philips/GE",29
+73.0685,"Male","Cognitively Normal","Philips/GE",30
+81.6329,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+75.4301,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+72.0164,"Female","Alzheimer Disease","Philips/GE",22
+59.8055,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+71.9973,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+83.8877,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+90.7918,"Male","Cognitively Normal","Philips/GE",27
+76.7671,"Male","Late Mild Cognitive Impairment","Philips/GE",20
+82.2384,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+80.7096,"Male","Alzheimer Disease","Philips/GE",6
+83.0849,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+59.2438,"Female","Alzheimer Disease","Philips/GE",16
+75.7096,"Male","Cognitively Normal","Philips/GE",29
+84.9863,"Male","Alzheimer Disease","Philips/GE",22
+83.4055,"Female","Cognitively Normal","Philips/GE",30
+73.1973,"Female","Alzheimer Disease","Philips/GE",26
+67.4,"Female","Late Mild Cognitive Impairment","Philips/GE",24
+83.1945,"Female","Cognitively Normal","Philips/GE",30
+71.2575,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+86.3534,"Male","Cognitively Normal","Philips/GE",27
+81.5589,"Female","Cognitively Normal","Philips/GE",29
+83.526,"Male","Cognitively Normal","Philips/GE",28
+75.137,"Female","Cognitively Normal","Philips/GE",30
+84.474,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+70.4082,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+79.7288,"Female","Alzheimer Disease","Philips/GE",21
+61.9918,"Male","Alzheimer Disease","Philips/GE",19
+87.0164,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+82.1699,"Female","Alzheimer Disease","Philips/GE",24
+81.7781,"Male","Alzheimer Disease","Philips/GE",21
+71.2521,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+86.6,"Male","Late Mild Cognitive Impairment","Siemens",25
+81.5315,"Male","Cognitively Normal","Siemens",27
+77.2932,"Male","Cognitively Normal","Siemens",29
+74.2411,"Female","Late Mild Cognitive Impairment","Siemens",25
+79.5753,"Male","Late Mild Cognitive Impairment","Siemens",22
+76.1781,"Male","Alzheimer Disease","Siemens",24
+79.6301,"Male","Cognitively Normal","Siemens",30
+83.6795,"Female","Late Mild Cognitive Impairment","Siemens",23
+79.6986,"Male","Cognitively Normal","Siemens",29
+74.4685,"Female","Alzheimer Disease","Siemens",15
+85.6767,"Male","Late Mild Cognitive Impairment","Siemens",22
+65.2603,"Female","Cognitively Normal","Siemens",30
+80.3616,"Male","Late Mild Cognitive Impairment","Siemens",28
+81.6877,"Male","Late Mild Cognitive Impairment","Siemens",22
+83.9041,"Female","Alzheimer Disease","Siemens",18
+71.5863,"Female","Alzheimer Disease","Siemens",17
+75.989,"Male","Cognitively Normal","Siemens",30
+86.0877,"Female","Late Mild Cognitive Impairment","Siemens",20
+75.4986,"Male","Late Mild Cognitive Impairment","Siemens",23
+81.6521,"Male","Late Mild Cognitive Impairment","Siemens",25
+70.4575,"Male","Alzheimer Disease","Siemens",12
+80.2548,"Female","Cognitively Normal","Siemens",30
+77.7589,"Male","Late Mild Cognitive Impairment","Siemens",24
+68.6356,"Female","Late Mild Cognitive Impairment","Siemens",24
+77.2027,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+87.5151,"Male","Cognitively Normal","Siemens",29
+72.2521,"Male","Cognitively Normal","Philips/GE",29
+81.5973,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+85.1589,"Female","Cognitively Normal","Philips/GE",30
+83.2356,"Female","Cognitively Normal","Philips/GE",28
+81.3726,"Male","Late Mild Cognitive Impairment","Siemens",27
+76.7699,"Male","Late Mild Cognitive Impairment","Philips/GE",20
+62.2849,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+82.3753,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+67.0082,"Male","Late Mild Cognitive Impairment","Philips/GE",19
+59.7205,"Female","Alzheimer Disease","Philips/GE",21
+73.9644,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+77.074,"Male","Late Mild Cognitive Impairment","Siemens",25
+75.5397,"Female","Late Mild Cognitive Impairment","Philips/GE",28
+76.874,"Male","Cognitively Normal","Siemens",29
+89.011,"Male","Cognitively Normal","Siemens",28
+73.3616,"Male","Late Mild Cognitive Impairment","Siemens",28
+75.2986,"Male","Late Mild Cognitive Impairment","Siemens",26
+89.5452,"Male","Late Mild Cognitive Impairment","Siemens",23
+70.2274,"Male","Late Mild Cognitive Impairment","Siemens",23
+73.6548,"Male","Late Mild Cognitive Impairment","Siemens",28
+66.0904,"Male","Late Mild Cognitive Impairment","Siemens",30
+86.3452,"Female","Cognitively Normal","Siemens",28
+79.5699,"Female","Cognitively Normal","Siemens",29
+77.5096,"Male","Late Mild Cognitive Impairment","Siemens",11
+74.7205,"Male","Late Mild Cognitive Impairment","Siemens",26
+77.3178,"Female","Alzheimer Disease","Siemens",5
+60.5178,"Male","Late Mild Cognitive Impairment","Siemens",25
+84.6795,"Male","Late Mild Cognitive Impairment","Siemens",30
+70.5616,"Male","Late Mild Cognitive Impairment","Siemens",26
+78.674,"Female","Late Mild Cognitive Impairment","Siemens",24
+72.5534,"Male","Late Mild Cognitive Impairment","Siemens",NA
+61.7123,"Female","Late Mild Cognitive Impairment","Siemens",26
+79.274,"Female","Cognitively Normal","Siemens",30
+89.7315,"Male","Late Mild Cognitive Impairment","Siemens",25
+79.0959,"Male","Alzheimer Disease","Siemens",23
+79.0027,"Female","Late Mild Cognitive Impairment","Siemens",23
+64.6,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+88.2411,"Male","Cognitively Normal","Philips/GE",NA
+84.9973,"Female","Late Mild Cognitive Impairment","Philips/GE",20
+72.0274,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+83.2658,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+76.6137,"Female","Cognitively Normal","Philips/GE",28
+77.5425,"Female","Cognitively Normal","Philips/GE",30
+75.9123,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+89.2356,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+74.6466,"Female","Late Mild Cognitive Impairment","Philips/GE",NA
+58.2932,"Female","Late Mild Cognitive Impairment","Philips/GE",NA
+65.3699,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+65.5507,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+66.6959,"Male","Alzheimer Disease","Philips/GE",20
+84.7562,"Male","Late Mild Cognitive Impairment","Siemens",28
+78.0384,"Female","Alzheimer Disease","Siemens",26
+74.5479,"Female","Cognitively Normal","Siemens",30
+82.6301,"Male","Cognitively Normal","Siemens",29
+77.1507,"Female","Cognitively Normal","Siemens",30
+82.6055,"Female","Late Mild Cognitive Impairment","Siemens",23
+73.2247,"Female","Cognitively Normal","Siemens",30
+74.9288,"Female","Late Mild Cognitive Impairment","Siemens",18
+75.4795,"Male","Late Mild Cognitive Impairment","Siemens",26
+69.9534,"Female","Late Mild Cognitive Impairment","Siemens",27
+84.2959,"Female","Late Mild Cognitive Impairment","Siemens",27
+75.6027,"Male","Late Mild Cognitive Impairment","Siemens",29
+86.4219,"Male","Alzheimer Disease","Siemens",26
+77.537,"Male","Alzheimer Disease","Siemens",10
+88.926,"Male","Alzheimer Disease","Siemens",26
+78.9315,"Male","Alzheimer Disease","Siemens",20
+79.1589,"Female","Cognitively Normal","Siemens",28
+81.7945,"Male","Alzheimer Disease","Siemens",26
+71.7507,"Female","Alzheimer Disease","Siemens",16
+79.3753,"Male","Cognitively Normal","Siemens",30
+71.3233,"Male","Alzheimer Disease","Siemens",7
+79.8438,"Female","Cognitively Normal","Siemens",28
+79.2932,"Female","Late Mild Cognitive Impairment","Siemens",30
+74.9178,"Male","Late Mild Cognitive Impairment","Siemens",18
+74.3452,"Female","Cognitively Normal","Siemens",28
+65.2932,"Male","Alzheimer Disease","Siemens",16
+77.9397,"Male","Late Mild Cognitive Impairment","Siemens",29
+70.8493,"Female","Cognitively Normal","Siemens",29
+72.0137,"Female","Cognitively Normal","Siemens",26
+79.0192,"Male","Alzheimer Disease","Siemens",25
+81.4712,"Male","Late Mild Cognitive Impairment","Siemens",21
+85.674,"Female","Late Mild Cognitive Impairment","Siemens",27
+76.0137,"Male","Late Mild Cognitive Impairment","Siemens",27
+76.063,"Female","Cognitively Normal","Siemens",30
+79.463,"Female","Cognitively Normal","Siemens",30
+78.0384,"Female","Late Mild Cognitive Impairment","Siemens",20
+77.4685,"Male","Late Mild Cognitive Impairment","Siemens",28
+76.8685,"Male","Late Mild Cognitive Impairment","Siemens",21
+80.5178,"Female","Late Mild Cognitive Impairment","Siemens",30
+73.8356,"Female","Alzheimer Disease","Siemens",12
+62.6986,"Male","Alzheimer Disease","Siemens",16
+63.937,"Female","Alzheimer Disease","Siemens",19
+72.4384,"Female","Alzheimer Disease","Philips/GE",12
+73.9014,"Male","Cognitively Normal","Philips/GE",29
+75.737,"Female","Cognitively Normal","Philips/GE",27
+75.9918,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+75.6877,"Male","Cognitively Normal","Philips/GE",30
+77.6,"Female","Late Mild Cognitive Impairment","Philips/GE",20
+58.3342,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+72.2329,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+68.8384,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+72.7562,"Male","Cognitively Normal","Philips/GE",30
+68.2192,"Male","Cognitively Normal","Siemens",30
+80.8411,"Female","Cognitively Normal","Siemens",30
+83.6521,"Male","Cognitively Normal","Siemens",30
+75.5452,"Female","Cognitively Normal","Siemens",29
+70.6685,"Male","Late Mild Cognitive Impairment","Siemens",29
+75.8959,"Male","Alzheimer Disease","Siemens",8
+76.1096,"Female","Late Mild Cognitive Impairment","Siemens",30
+71.4548,"Female","Late Mild Cognitive Impairment","Siemens",28
+80.189,"Male","Late Mild Cognitive Impairment","Siemens",26
+84.6082,"Female","Late Mild Cognitive Impairment","Siemens",27
+79.1534,"Male","Alzheimer Disease","Siemens",22
+77.3479,"Male","Late Mild Cognitive Impairment","Siemens",28
+72.7288,"Female","Cognitively Normal","Siemens",29
+74.874,"Male","Late Mild Cognitive Impairment","Philips/GE",22
+88.2027,"Female","Cognitively Normal","Philips/GE",26
+75.4959,"Female","Late Mild Cognitive Impairment","Philips/GE",27
+79.1671,"Female","Cognitively Normal","Philips/GE",26
+80.4932,"Male","Cognitively Normal","Philips/GE",30
+74.4822,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+70.1973,"Female","Alzheimer Disease","Philips/GE",28
+72.4466,"Male","Alzheimer Disease","Philips/GE",23
+71.7616,"Female","Alzheimer Disease","Philips/GE",19
+84.4164,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+75.2027,"Male","Cognitively Normal","Philips/GE",30
+76.3808,"Male","Cognitively Normal","Philips/GE",30
+79.2849,"Male","Late Mild Cognitive Impairment","Philips/GE",NA
+82.9205,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+56.2329,"Female","Alzheimer Disease","Philips/GE",11
+78.7589,"Female","Late Mild Cognitive Impairment","Philips/GE",22
+69.9315,"Male","Alzheimer Disease","Philips/GE",20
+64.2438,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+89.8192,"Male","Alzheimer Disease","Philips/GE",20
+78.3918,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+81.4438,"Female","Cognitively Normal","Philips/GE",29
+73.7562,"Female","Cognitively Normal","Philips/GE",30
+70.2849,"Male","Late Mild Cognitive Impairment","Philips/GE",21
+72.2,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+80,"Male","Cognitively Normal","Philips/GE",29
+76.4384,"Male","Cognitively Normal","Siemens",28
+69.6712,"Male","Late Mild Cognitive Impairment","Siemens",26
+83.2192,"Female","Late Mild Cognitive Impairment","Siemens",19
+71.2685,"Male","Late Mild Cognitive Impairment","Siemens",26
+73.0356,"Male","Cognitively Normal","Siemens",30
+76.9397,"Female","Late Mild Cognitive Impairment","Siemens",18
+82.4603,"Male","Late Mild Cognitive Impairment","Siemens",28
+79.1808,"Female","Cognitively Normal","Siemens",30
+79.6959,"Male","Alzheimer Disease","Siemens",17
+88.7836,"Female","Alzheimer Disease","Siemens",19
+84.1945,"Female","Cognitively Normal","Siemens",30
+66.0055,"Male","Cognitively Normal","Siemens",29
+67.3452,"Male","Late Mild Cognitive Impairment","Siemens",29
+84.8849,"Male","Late Mild Cognitive Impairment","Siemens",27
+78.2685,"Male","Late Mild Cognitive Impairment","Siemens",28
+79.6521,"Male","Alzheimer Disease","Siemens",25
+81.526,"Female","Late Mild Cognitive Impairment","Philips/GE",26
+81.9616,"Male","Cognitively Normal","Philips/GE",27
+80.4329,"Male","Cognitively Normal","Philips/GE",30
+85.9068,"Male","Cognitively Normal","Philips/GE",30
+74.0712,"Male","Cognitively Normal","Philips/GE",30
+81.074,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+80.3452,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+81.0027,"Female","Late Mild Cognitive Impairment","Philips/GE",21
+78.2219,"Female","Cognitively Normal","Philips/GE",30
+75.737,"Male","Late Mild Cognitive Impairment","Siemens",24
+78.1014,"Male","Cognitively Normal","Siemens",30
+85.6247,"Female","Cognitively Normal","Siemens",30
+80.0192,"Female","Late Mild Cognitive Impairment","Siemens",27
+87.0247,"Female","Alzheimer Disease","Siemens",NA
+82.3699,"Male","Late Mild Cognitive Impairment","Siemens",29
+65.8795,"Male","Late Mild Cognitive Impairment","Siemens",26
+75.6384,"Female","Cognitively Normal","Siemens",27
+76.3808,"Male","Cognitively Normal","Siemens",30
+78.2356,"Female","Alzheimer Disease","Siemens",27
+72.1781,"Female","Late Mild Cognitive Impairment","Siemens",27
+61.9671,"Female","Late Mild Cognitive Impairment","Siemens",30
+75.9863,"Female","Cognitively Normal","Siemens",30
+84.1425,"Female","Late Mild Cognitive Impairment","Siemens",18
+79.7041,"Female","Cognitively Normal","Siemens",28
+88.4137,"Male","Alzheimer Disease","Siemens",19
+84.211,"Male","Late Mild Cognitive Impairment","Siemens",29
+77.1616,"Female","Late Mild Cognitive Impairment","Siemens",29
+85.6767,"Male","Late Mild Cognitive Impairment","Siemens",27
+77.5945,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+75.6767,"Female","Alzheimer Disease","Philips/GE",26
+78.6986,"Female","Cognitively Normal","Siemens",29
+85.7342,"Female","Alzheimer Disease","Philips/GE",19
+77.063,"Male","Alzheimer Disease","Siemens",22
+73.5973,"Female","Cognitively Normal","Philips/GE",29
+88.8,"Male","Late Mild Cognitive Impairment","Siemens",26
+80.9452,"Female","Cognitively Normal","Philips/GE",30
+85.1014,"Female","Late Mild Cognitive Impairment","Philips/GE",21
+72.5342,"Female","Alzheimer Disease","Siemens",26
+75.2493,"Female","Cognitively Normal","Philips/GE",29
+78.4274,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+73.8959,"Female","Cognitively Normal","Philips/GE",30
+74.3151,"Male","Late Mild Cognitive Impairment","Philips/GE",NA
+85.5342,"Female","Late Mild Cognitive Impairment","Philips/GE",21
+72.9041,"Female","Late Mild Cognitive Impairment","Philips/GE",28
+79.7863,"Male","Late Mild Cognitive Impairment","Philips/GE",13
+71.7671,"Male","Cognitively Normal","Philips/GE",30
+66.8274,"Male","Alzheimer Disease","Philips/GE",12
+64.5041,"Male","Alzheimer Disease","Philips/GE",23
+71.8466,"Female","Alzheimer Disease","Philips/GE",19
+75.3096,"Female","Cognitively Normal","Philips/GE",28
+81.4247,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+76.3288,"Male","Cognitively Normal","Philips/GE",29
+73.9781,"Male","Alzheimer Disease","Philips/GE",24
+79.5973,"Male","Cognitively Normal","Philips/GE",29
+82.6,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+76.6301,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+76.8164,"Male","Cognitively Normal","Philips/GE",29
+77.7151,"Female","Cognitively Normal","Philips/GE",30
+70.6384,"Female","Alzheimer Disease","Philips/GE",22
+80.9589,"Male","Cognitively Normal","Philips/GE",27
+79.5041,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+85.011,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+77.9973,"Female","Alzheimer Disease","Philips/GE",25
+76.7863,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+81.411,"Female","Alzheimer Disease","Philips/GE",18
+78.5507,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+72.2849,"Male","Alzheimer Disease","Philips/GE",21
+73.7973,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+72.7041,"Male","Cognitively Normal","Philips/GE",29
+81.8877,"Female","Cognitively Normal","Philips/GE",29
+87.9041,"Female","Late Mild Cognitive Impairment","Philips/GE",24
+87.2384,"Female","Late Mild Cognitive Impairment","Philips/GE",18
+85.3233,"Male","Alzheimer Disease","Philips/GE",14
+77.7151,"Female","Cognitively Normal","Philips/GE",29
+78.1014,"Female","Cognitively Normal","Philips/GE",30
+69.7973,"Female","Alzheimer Disease","Philips/GE",20
+87.4849,"Female","Alzheimer Disease","Philips/GE",22
+76.6932,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+85.9425,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+87.5945,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+65.4219,"Male","Alzheimer Disease","Philips/GE",17
+80.1041,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+70.7178,"Female","Late Mild Cognitive Impairment","Philips/GE",20
+80.3507,"Male","Cognitively Normal","Siemens",28
+83.7534,"Female","Late Mild Cognitive Impairment","Siemens",22
+69.6658,"Male","Late Mild Cognitive Impairment","Siemens",25
+89.1808,"Male","Late Mild Cognitive Impairment","Siemens",25
+70.8904,"Female","Late Mild Cognitive Impairment","Siemens",24
+72.337,"Female","Cognitively Normal","Siemens",28
+72.7671,"Male","Late Mild Cognitive Impairment","Siemens",30
+73.6849,"Male","Cognitively Normal","Philips/GE",28
+74.5507,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+71.9014,"Female","Late Mild Cognitive Impairment","Philips/GE",10
+80.1836,"Male","Cognitively Normal","Philips/GE",29
+67.7973,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+69.8849,"Male","Late Mild Cognitive Impairment","Philips/GE",25
+81.2767,"Male","Late Mild Cognitive Impairment","Philips/GE",23
+68.8356,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+81.8658,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+81.3726,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+73.3973,"Female","Cognitively Normal","Philips/GE",30
+65.9671,"Female","Alzheimer Disease","Philips/GE",NA
+72.1808,"Male","Cognitively Normal","Philips/GE",30
+85.5836,"Male","Cognitively Normal","Philips/GE",27
+76.6959,"Female","Alzheimer Disease","Philips/GE",23
+80.4438,"Female","Alzheimer Disease","Philips/GE",19
+72.4959,"Male","Alzheimer Disease","Philips/GE",25
+76.4822,"Male","Cognitively Normal","Philips/GE",29
+82.9726,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+75.8356,"Female","Cognitively Normal","Philips/GE",30
+84.9726,"Female","Alzheimer Disease","Philips/GE",17
+77.8822,"Male","Alzheimer Disease","Philips/GE",27
+65.011,"Male","Alzheimer Disease","Philips/GE",14
+75.2329,"Female","Cognitively Normal","Philips/GE",30
+79.526,"Male","Late Mild Cognitive Impairment","Philips/GE",24
+79.7315,"Female","Late Mild Cognitive Impairment","Philips/GE",24
+88.6356,"Female","Cognitively Normal","Philips/GE",26
+74.0685,"Female","Cognitively Normal","Philips/GE",27
+79.6712,"Male","Cognitively Normal","Siemens",30
+72.5288,"Male","Late Mild Cognitive Impairment","Siemens",27
+85.5014,"Male","Late Mild Cognitive Impairment","Philips/GE",21
+71.4438,"Female","Late Mild Cognitive Impairment","Philips/GE",19
+76.4192,"Female","Late Mild Cognitive Impairment","Siemens",30
+74.6685,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+76.0959,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+57.7973,"Female","Late Mild Cognitive Impairment","Philips/GE",21
+79.211,"Female","Late Mild Cognitive Impairment","Siemens",30
+86.7726,"Male","Alzheimer Disease","Siemens",16
+75.274,"Male","Alzheimer Disease","Philips/GE",24
+83.4548,"Female","Cognitively Normal","Philips/GE",30
+64.126,"Female","Late Mild Cognitive Impairment","Philips/GE",28
+81.4329,"Female","Cognitively Normal","Philips/GE",24
+83.6986,"Female","Cognitively Normal","Philips/GE",28
+81.5342,"Female","Alzheimer Disease","Philips/GE",25
+81.0959,"Female","Cognitively Normal","Philips/GE",30
+91.2904,"Female","Alzheimer Disease","Philips/GE",25
+58.5123,"Male","Alzheimer Disease","Philips/GE",26
+65.8849,"Male","Late Mild Cognitive Impairment","Philips/GE",26
+67.6384,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+76.4466,"Male","Late Mild Cognitive Impairment","Philips/GE",13
+80.2082,"Female","Late Mild Cognitive Impairment","Philips/GE",24
+67.2055,"Female","Late Mild Cognitive Impairment","Philips/GE",28
+66.7918,"Female","Late Mild Cognitive Impairment","Philips/GE",29
+83.6356,"Female","Late Mild Cognitive Impairment","Philips/GE",30
+81.5808,"Male","Cognitively Normal","Philips/GE",29
+76.6356,"Female","Cognitively Normal","Philips/GE",30
+58.7507,"Female","Alzheimer Disease","Philips/GE",12
+66.3096,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+76.063,"Male","Cognitively Normal","Philips/GE",29
+88.0082,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+79.3479,"Male","Late Mild Cognitive Impairment","Philips/GE",16
+76.611,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+64.2548,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+75.1973,"Male","Cognitively Normal","Philips/GE",27
+73.3452,"Male","Late Mild Cognitive Impairment","Philips/GE",28
+82.9068,"Male","Alzheimer Disease","Philips/GE",25
+77.2192,"Male","Late Mild Cognitive Impairment","Philips/GE",29
+88.2055,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+79.9726,"Male","Cognitively Normal","Philips/GE",28
+78.9753,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+58.2904,"Female","Late Mild Cognitive Impairment","Philips/GE",25
+77.5178,"Male","Late Mild Cognitive Impairment","Philips/GE",27
+84.7041,"Male","Late Mild Cognitive Impairment","Philips/GE",30
+75.326,"Female","Alzheimer Disease","Siemens",22
+78.3562,"Male","Cognitively Normal","Siemens",30
+82.3753,"Male","Cognitively Normal","Siemens",NA
+73.7205,"Female","Cognitively Normal","Siemens",29
+84.6548,"Female","Alzheimer Disease","Siemens",26
+86.2055,"Male","Cognitively Normal","Siemens",29
+73.2521,"Female","Late Mild Cognitive Impairment","Siemens",20
+84.9753,"Female","Alzheimer Disease","Siemens",28
+87.8849,"Male","Alzheimer Disease","Siemens",21
+81.4082,"Female","Late Mild Cognitive Impairment","Siemens",27
+81.3644,"Female","Late Mild Cognitive Impairment","Siemens",24
+75.0438,"Female","Late Mild Cognitive Impairment","Siemens",21
+70.2329,"Female","Late Mild Cognitive Impairment","Siemens",26
+77.211,"Male","Cognitively Normal","Siemens",30
+82.7836,"Female","Alzheimer Disease","Siemens",17
+72.0493,"Female","Alzheimer Disease","Siemens",27
+72.6685,"Female","Late Mild Cognitive Impairment","Siemens",29
+77.7808,"Female","Late Mild Cognitive Impairment","Siemens",29
+86.9342,"Male","Cognitively Normal","Siemens",30
+84.5644,"Female","Cognitively Normal","Siemens",30
+80.7178,"Male","Cognitively Normal","Siemens",30
+71.2932,"Male","Late Mild Cognitive Impairment","Siemens",27

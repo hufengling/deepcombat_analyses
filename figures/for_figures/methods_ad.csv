@@ -1,0 +1,7 @@
+"Method","Log 10 p-value"
+"Raw","3.05 (0.99)"
+"ComBat","0.38 (0.34)"
+"CovBat","0.32 (0.28)"
+"dcVAE","3.6 (0)"
+"gcVAE","3.6 (0.04)"
+"DeepComBat","0.44 (0.24)"
