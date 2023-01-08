@@ -69,6 +69,8 @@ adni_cov <- unique_cov %>%
          manufac = ifelse(manufac == "True", "Siemens", "Philips/GE")) %>%
   mutate(DIAGNOSIS = factor(DIAGNOSIS, levels = c("Cognitively Normal", "Late Mild Cognitive Impairment", "Alzheimer Disease")),
          SEX = factor(SEX, levels = c("Male", "Female")))
+write.csv(adni_cov, "./data/for_paper/for_figures/adni_dem.csv", 
+          row.names = F)
 
 as_latex_with_caption <- function(gt, chunk_label) {
   gt <- gt::as_latex(gt)
@@ -92,14 +94,19 @@ tbl_summary(adni_cov, by = "manufac",
             missing = "no",
             digits = all_continuous() ~ 1) %>%
   modify_caption("Table 1. Patient demographics at time of acquisition, stratified by scanner manufacturer.") %>%
-  bold_labels() %>% as_gt() %>%
-  gtsave(filename = "figures/demographics.png")
-
+  bold_labels() %>% as_kable_extra()
+  #gtsave(filename = "figures/demographics.tex")
 ```
 
 ```{r}
 manufac_stats <- stats_tester(unique_data_list, unique_cov)
 manufac_stats
+lambda_names_table <- c("Raw", 
+                        "Lambda = 0.00625", 
+                        "Lambda = 0.025", 
+                        "Lambda = 0.1",
+                        "Lambda = 0.4", 
+                        "Lambda = 1.6")
 ```
 
 ## LR methods table
@@ -111,12 +118,14 @@ methods_lr <- methods_lr[methods_range, c(1, 12:21)] %>%
 methods_lr[, 2:6] <- methods_lr[, 2:6] * -1
 methods_lr$Method <- method_names
 methods_lr <- methods_lr %>% 
-  mutate(c = paste0(AGE_log, " (", AGE_log_SD, ")"),
+  mutate(AGE_log = paste0(AGE_log, " (", AGE_log_SD, ")"),
          SEXM_log = paste0(SEXM_log, " (", SEXM_log_SD, ")"),
          DIAGNOSISCN_log = paste0(DIAGNOSISCN_log, " (", DIAGNOSISCN_log_SD, ")"),
          DIAGNOSISLMCI_log = paste0(DIAGNOSISLMCI_log, " (", DIAGNOSISLMCI_log_SD, ")"),
          manufacTrue_log = paste0(manufacTrue_log, " (", manufacTrue_log_SD, ")"))
 methods_lr <- methods_lr[, 1:6]
+write.csv(methods_lr, "./data/for_paper/for_figures/methods_lr.csv", 
+          row.names = F)
 
 gt(methods_lr, rowname_col = "Method") %>% 
   tab_header(title = md("Table 2. Feature-wise linear regression results, reported as negative log 10 p-values — Mean (SD)")) %>% 
@@ -124,9 +133,38 @@ gt(methods_lr, rowname_col = "Method") %>%
                           SEXM_log = md("**Sex**"),
                           DIAGNOSISCN_log = md("**AD Status (CN)**"),
                           DIAGNOSISLMCI_log = md("**AD Status (LMCI)**"),
-                          manufacTrue_log = md("**Batch**"))) %>% 
-  gtsave(filename = "figures/lr_methods.png")
+                          manufacTrue_log = md("**Batch**")))# %>% 
+  #gtsave(filename = "figures/lr_methods.png")
 ```
+
+## LR lambdas table
+```{r}
+lambdas_lr <- manufac_stats$lr
+lambdas_lr <- lambdas_lr[lambdas_range, c(1, 12:21)] %>% 
+  mutate(across(where(is.numeric), round, digits = 2)) %>% 
+  rename(Method = dataset)
+lambdas_lr[, 2:6] <- lambdas_lr[, 2:6] * -1
+lambdas_lr$Method <- lambda_names_table
+lambdas_lr <- lambdas_lr %>% 
+  mutate(AGE_log = paste0(AGE_log, " (", AGE_log_SD, ")"),
+         SEXM_log = paste0(SEXM_log, " (", SEXM_log_SD, ")"),
+         DIAGNOSISCN_log = paste0(DIAGNOSISCN_log, " (", DIAGNOSISCN_log_SD, ")"),
+         DIAGNOSISLMCI_log = paste0(DIAGNOSISLMCI_log, " (", DIAGNOSISLMCI_log_SD, ")"),
+         manufacTrue_log = paste0(manufacTrue_log, " (", manufacTrue_log_SD, ")"))
+lambdas_lr <- lambdas_lr[, 1:6]
+write.csv(lambdas_lr, "./data/for_paper/for_figures/lambdas_lr.csv", 
+          row.names = F)
+
+gt(lambdas_lr, rowname_col = "Method") %>% 
+  tab_header(title = md("Table 2. Feature-wise linear regression results, reported as negative log 10 p-values — Mean (SD)")) %>% 
+  cols_label(.list = list(AGE_log = md("**Age**"),
+                          SEXM_log = md("**Sex**"),
+                          DIAGNOSISCN_log = md("**AD Status (CN)**"),
+                          DIAGNOSISLMCI_log = md("**AD Status (LMCI)**"),
+                          manufacTrue_log = md("**Batch**")))# %>% 
+  #gtsave(filename = "figures/lr_methods.png")
+```
+
 
 ## MANOVA methods table
 ```{r}
@@ -137,6 +175,8 @@ methods_manova <- methods_manova[methods_range, c(1, 6:9)] %>%
   rename(Method = dataset)
 methods_manova$Method <- method_names
 methods_manova[, -1] <- methods_manova[, -1] * -1
+write.csv(methods_manova, "./data/for_paper/for_figures/methods_manova.csv", 
+          row.names = F)
 
 gt(methods_manova, rowname_col = "Method") %>% 
   tab_header(title = md("Table 2. Multivariate analysis of variance results, reported as negative log 10 p-values.")) %>% 
@@ -154,8 +194,10 @@ lambdas_manova <- manufac_stats$manova %>%
 lambdas_manova <- lambdas_manova[lambdas_range, c(1, 6:9)] %>% 
   mutate(across(where(is.numeric), round, digits = 2)) %>% 
   rename(Method = dataset)
-lambdas_manova$Method <- lambda_names
+lambdas_manova$Method <- lambda_names_table
 lambdas_manova[, -1] <- lambdas_manova[, -1] * -1
+write.csv(lambdas_manova, "./data/for_paper/for_figures/lambdas_manova.csv", 
+          row.names = F)
 
 gt(lambdas_manova, rowname_col = "Method") %>% 
   tab_header(title = md("Table 2. Multivariate analysis of variance results, reported as negative log 10 p-values.")) %>% 
@@ -177,6 +219,8 @@ methods_ad <- methods_ad[methods_range, c(1, 4:5)] %>%
   mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
 methods_ad$Method <- method_names
 methods_ad <- methods_ad[, -3]
+write.csv(methods_ad, "./data/for_paper/for_figures/methods_ad.csv", 
+          row.names = F)
 
 gt(methods_ad, rowname_col = "Method") %>% 
   tab_header(title = md("Table 3. Anderson-Darling results across batch.")) %>% 
@@ -193,8 +237,10 @@ lambdas_ad <- lambdas_ad[lambdas_range, c(1, 4:5)] %>%
   rename(Method = dataset) %>% 
   mutate(`Log 10 p-value` = `Log 10 p-value` * -1) %>% 
   mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
-lambdas_ad$Method <- lambda_names
+lambdas_ad$Method <- lambda_names_table
 lambdas_ad <- lambdas_ad[, -3]
+write.csv(lambdas_ad, "./data/for_paper/for_figures/lambdas_ad.csv", 
+          row.names = F)
 
 gt(lambdas_ad, rowname_col = "Method") %>% 
   tab_header(title = md("Table 3. Anderson-Darling results across batch.")) %>% 
