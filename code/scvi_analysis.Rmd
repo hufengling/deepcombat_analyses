@@ -212,11 +212,10 @@ gt(lambdas_manova, rowname_col = "Method") %>%
 ```{r}
 methods_ad <- manufac_stats$ad %>% 
   rename(`Log 10 p-value` = pval_log, SD = pval_log_SD)
-methods_ad <- methods_ad[methods_range, c(1, 4:5)] %>% 
+methods_ad <- methods_ad[methods_range, c(1, 2:3)] %>% 
   mutate(across(where(is.numeric), round, digits = 2)) %>% 
   rename(Method = dataset) %>% 
-  mutate(`Log 10 p-value` = `Log 10 p-value` * -1) %>% 
-  mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
+  mutate(pval = paste0(pval, " (", pval_SD, ")"))
 methods_ad$Method <- method_names
 methods_ad <- methods_ad[, -3]
 write.csv(methods_ad, "./figures/for_figures/methods_ad.csv", 
@@ -224,7 +223,7 @@ write.csv(methods_ad, "./figures/for_figures/methods_ad.csv",
 
 gt(methods_ad, rowname_col = "Method") %>% 
   tab_header(title = md("Table 3. Anderson-Darling results across batch.")) %>% 
-  cols_label(.list = list(`Log 10 p-value` = md("**Mean (SD)**")))# %>% 
+  cols_label(.list = list(pval = md("**Mean (SD)**")))# %>% 
 #gtsave(filename = "figures/manova.png")
 ```
 
