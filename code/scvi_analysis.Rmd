@@ -124,7 +124,7 @@ methods_lr <- methods_lr %>%
          DIAGNOSISLMCI_log = paste0(DIAGNOSISLMCI_log, " (", DIAGNOSISLMCI_log_SD, ")"),
          manufacTrue_log = paste0(manufacTrue_log, " (", manufacTrue_log_SD, ")"))
 methods_lr <- methods_lr[, 1:6]
-write.csv(methods_lr, "./data/for_paper/for_figures/methods_lr.csv", 
+write.csv(methods_lr, "./figures/for_figures/methods_lr.csv", 
           row.names = F)
 
 gt(methods_lr, rowname_col = "Method") %>% 
@@ -152,7 +152,7 @@ lambdas_lr <- lambdas_lr %>%
          DIAGNOSISLMCI_log = paste0(DIAGNOSISLMCI_log, " (", DIAGNOSISLMCI_log_SD, ")"),
          manufacTrue_log = paste0(manufacTrue_log, " (", manufacTrue_log_SD, ")"))
 lambdas_lr <- lambdas_lr[, 1:6]
-write.csv(lambdas_lr, "./data/for_paper/for_figures/lambdas_lr.csv", 
+write.csv(lambdas_lr, "./figures/for_figures/lambdas_lr.csv", 
           row.names = F)
 
 gt(lambdas_lr, rowname_col = "Method") %>% 
@@ -175,7 +175,7 @@ methods_manova <- methods_manova[methods_range, c(1, 6:9)] %>%
   rename(Method = dataset)
 methods_manova$Method <- method_names
 methods_manova[, -1] <- methods_manova[, -1] * -1
-write.csv(methods_manova, "./data/for_paper/for_figures/methods_manova.csv", 
+write.csv(methods_manova, "./figures/for_figures/methods_manova.csv", 
           row.names = F)
 
 gt(methods_manova, rowname_col = "Method") %>% 
@@ -196,7 +196,7 @@ lambdas_manova <- lambdas_manova[lambdas_range, c(1, 6:9)] %>%
   rename(Method = dataset)
 lambdas_manova$Method <- lambda_names_table
 lambdas_manova[, -1] <- lambdas_manova[, -1] * -1
-write.csv(lambdas_manova, "./data/for_paper/for_figures/lambdas_manova.csv", 
+write.csv(lambdas_manova, "./figures/for_figures/lambdas_manova.csv", 
           row.names = F)
 
 gt(lambdas_manova, rowname_col = "Method") %>% 
@@ -219,7 +219,7 @@ methods_ad <- methods_ad[methods_range, c(1, 4:5)] %>%
   mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
 methods_ad$Method <- method_names
 methods_ad <- methods_ad[, -3]
-write.csv(methods_ad, "./data/for_paper/for_figures/methods_ad.csv", 
+write.csv(methods_ad, "./figures/for_figures/methods_ad.csv", 
           row.names = F)
 
 gt(methods_ad, rowname_col = "Method") %>% 
@@ -239,7 +239,7 @@ lambdas_ad <- lambdas_ad[lambdas_range, c(1, 4:5)] %>%
   mutate(`Log 10 p-value` = paste0(`Log 10 p-value`, " (", SD, ")"))
 lambdas_ad$Method <- lambda_names_table
 lambdas_ad <- lambdas_ad[, -3]
-write.csv(lambdas_ad, "./data/for_paper/for_figures/lambdas_ad.csv", 
+write.csv(lambdas_ad, "./figures/for_figures/lambdas_ad.csv", 
           row.names = F)
 
 gt(lambdas_ad, rowname_col = "Method") %>% 
