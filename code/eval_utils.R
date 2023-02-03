@@ -1,8 +1,60 @@
-umap_plotter <- function(data_list, covariates, plot_names, n_neighbors, n_epochs) {
+coord_flipper <- function(coord_list, flip_vec) {
+  flipped_coord_list <- vector("list", length(coord_list))
+  
+  for (i in 1:length(coord_list)) {
+    tmp_coord <- coord_list[[i]]
+    
+    # No flip
+    if (flip_vec[i] == 0)
+      flipped_coord_list[[i]] <- tmp_coord
+    # Flip X
+    if (flip_vec[i] == 1) {
+      tmp_coord[, 1] <- tmp_coord[, 1] * -1
+      flipped_coord_list[[i]] <- tmp_coord
+    }
+    # Flip Y
+    if (flip_vec[i] == 2) {
+      tmp_coord[, 2] <- tmp_coord[, 2] * -1
+      flipped_coord_list[[i]] <- tmp_coord
+    }
+    # Flip both
+    if (flip_vec[i] == 3) {
+      tmp_coord[, 1] <- tmp_coord[, 1] * -1
+      tmp_coord[, 2] <- tmp_coord[, 2] * -1
+      flipped_coord_list[[i]] <- tmp_coord
+    }
+  }
+  
+  return(flipped_coord_list)
+}
+
+umap_plotter <- function(data_list, covariates, plot_names, 
+                         n_neighbors = 20, n_epochs = 100,
+                         is_umap_coords = FALSE) {
   if (length(data_list) != 6) {
     stop("Length of data_list must be 6")
   }
   umap_plot_list <- vector("list", length(data_list))
+  layout_cov_list <- vector("list", length(data_list))
+  
+  # To plot pre-calculated UMAP coords that have been arbitrarily flipped so signs match
+  if (is_umap_coords) {
+    for (i in 1:length(data_list)) {
+      umap_plot_list[[i]] <- ggplot(data_list[[i]]) + 
+        geom_point(aes(`1`, `2`, color = manufac, shape = ".")) +
+        xlab("UMAP 1") +
+        ylab("UMAP 2") +
+        labs(title = plot_names[i]) +
+        theme_classic() +
+        theme(legend.position = "none",
+              plot.title = element_text(hjust = 0.5))
+    }
+    
+    return(ggarrange(plotlist = umap_plot_list, 
+                     ncol = 3, nrow = 2))
+  }
+  
+  # Calculate and plot UMAP
   for (i in 1:length(data_list)) {
     data <- data_list[[i]]
     umap_custom <- umap.defaults
@@ -12,13 +64,7 @@ umap_plotter <- function(data_list, covariates, plot_names, n_neighbors, n_epoch
     layout_cov <- cbind(data_umap$layout, covariates)
     names(layout_cov)[1:2] <- c(1, 2)
     
-    # subid <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = subid, shape = ".")) +
-    #   theme(legend.position = "none")
-    # age <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = AGE, shape = "."))
-    # sex <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = SEX, shape = "."))
-    # diagnosis <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = DIAGNOSIS, shape = "."))
-    # random <- ggplot(layout_cov) + geom_point(aes(`1`, `2`, color = Random, shape = ".")) +
-    #   theme(legend.position = "none")
+    layout_cov_list[[i]] <- layout_cov
     umap_plot_list[[i]] <- ggplot(layout_cov) + 
       geom_point(aes(`1`, `2`, color = manufac, shape = ".")) +
       xlab("UMAP 1") +
@@ -29,10 +75,9 @@ umap_plotter <- function(data_list, covariates, plot_names, n_neighbors, n_epoch
             plot.title = element_text(hjust = 0.5))
     gc()
   }
-  umap_plot_arrange <- ggarrange(plotlist = umap_plot_list, 
-                                 ncol = 3, nrow = 2)
-  
-  return(umap_plot_arrange)
+  return(list(plot = ggarrange(plotlist = umap_plot_list, 
+                               ncol = 3, nrow = 2),
+              coords = layout_cov_list))
 }
 
 pca_plotter <- function(data_list, covariates, plot_names) {
@@ -40,8 +85,11 @@ pca_plotter <- function(data_list, covariates, plot_names) {
     stop("Length of data_list must be 6")
   }
   pca_plot_list <- vector("list", length(data_list))
+  
+  # Calculate and plot PCA
   for (i in 1:length(data_list)) {
-    tmp_pca <- prcomp(data_list[[i]], scale. = TRUE)
+    tmp_pca <- princomp(data_list[[i]], cor = TRUE)
+    
     pca_plot_list[[i]] <- autoplot(tmp_pca, data = covariates, colour = "manufac", 
                                    frame = TRUE, frame.type = 'norm') + 
       theme_classic() + 
@@ -49,9 +97,8 @@ pca_plotter <- function(data_list, covariates, plot_names) {
       theme(legend.position = "none",
             plot.title = element_text(hjust = 0.5))
   }
-  pca_plot_arrange <- ggarrange(plotlist = pca_plot_list, 
-                                ncol = 3, nrow = 2)
-  return(pca_plot_arrange)
+  return(ggarrange(plotlist = pca_plot_list, 
+                   ncol = 3, nrow = 2))
 }
 
 cor_plotter <- function(data_list, covariates, plot_names) {
@@ -189,7 +236,7 @@ stats_tester <- function(data_list, covariates) {
 }
 
 ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "manufac",
-                         k_fold = 10, repeats = 1, verbose = FALSE) {
+                         k_fold = 10, repeats = 1, verbose = FALSE, cores = 10) {
   if (is.null(ml_interval)) {
     ml_interval <- 1:length(data_list)
   }
@@ -197,109 +244,128 @@ ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "m
   outcome_vec <- covariates[outcome]
   names(outcome_vec) <- "outcome"
   tmp_list <- lapply(tmp_list, function(item) {
-    cbind(as.data.frame(item), outcome = outcome_vec)
+    joined_df <- cbind(as.data.frame(item), outcome = outcome_vec)
+    return(joined_df)
   })
   
   if (outcome %in% c("SEX", "manufac")) { #two class prediction tasks
-    tc <- trainControl(method = "repeatedcv", number = k_fold, repeats = repeats,
+    tc <- trainControl(method = "repeatedcv", 
+                       number = k_fold, repeats = repeats,
                        summaryFunction = twoClassSummary,
                        classProbs = TRUE,
-                       savePredictions = TRUE, 
+                       savePredictions = TRUE,
+                       verboseIter = verbose,
+                       sampling = "up")
+  }
+  
+  if (outcome %in% c("DIAGNOSIS")) { #multiclass prediction
+    tc <- trainControl(method = "repeatedcv", 
+                       number = k_fold, repeats = repeats,
+                       verboseIter = verbose,
+                       sampling = "up")
+  }
+  
+  if (outcome %in% c("AGE")) { #regression
+    tc <- trainControl(method = "repeatedcv", 
+                       number = k_fold, repeats = repeats,
                        verboseIter = verbose)
   }
   
-  if (outcome %in% c("DIAGNOSIS", "AGE")) { #regression/multiclass prediction
-    tc <- trainControl(method = "repeatedcv", number = k_fold, repeats = repeats,
-                       verboseIter = verbose)
-  }
-  
-  data_results <- vector("list", length(tmp_list))
-  names(data_results) <- names(tmp_list)
-  
-  for (i in 1:length(tmp_list)) {
-    if (verbose) {
-      cat(paste0("Correcting dataset ", i))
-    }
-    item <- tmp_list[[i]]
+  data_results <- lapply(tmp_list, function(item) {
     if (outcome %in% c("SEX", "manufac")) {
-      tmp_rf <- train(outcome ~ ., data = item, method = "rf", 
-                      trControl = tc, tuneGrid = data.frame(.mtry = 20), 
+      tmp_rf <- train(outcome ~ ., data = item, method = "rf",
+                      trControl = tc,
+                      tuneGrid = data.frame(.mtry = 20),
                       metric = "ROC")$results
       tmp_svm <- train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, tuneGrid = data.frame(.sigma = 1/62, .C = 1),
+                       trControl = tc, 
+                       tuneGrid = data.frame(.sigma = 1/62, .C = 1),
                        metric = "ROC")$results
       tmp_knn <- train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, tuneGrid = data.frame(.k = 5),
+                       trControl = tc, 
+                       tuneGrid = data.frame(.k = 5),
                        metric = "ROC")$results
-      tmp_lda <- train(outcome ~ ., data = item, method = "lda", 
-                       trControl = tc, metric = "ROC")$results
       tmp_qda <- train(outcome ~ ., data = item, method = "qda", 
                        trControl = tc, metric = "ROC")$results
-      tmp_logitboost <- train(outcome ~ ., data = item, method = "LogitBoost",
-                              trControl = tc, tuneGrid = data.frame(.nIter = 100),
-                              metric = "ROC")$results
-      tmp_glm <- train(outcome ~ ., data = item, method = "glm",
-                       trControl = tc, metric = "ROC")$results
-      tmp_nn <- train(outcome ~ ., data = item, method = "nnet",
-                      trControl = tc, tuneGrid = data.frame(.size = 8, .decay = 0),
-                      metric = "ROC")$results
+      tmp_xgb <- train(outcome ~ ., data = item, method = "xgbTree",
+                       trControl = tc,
+                       tuneGrid = data.frame(.nrounds = 100,
+                                             .max_depth = 6,
+                                             .eta = 0.1,
+                                             .gamma = 0,
+                                             .colsample_bytree = .5,
+                                             .min_child_weight = 1,
+                                             .subsample = 1),
+                       metric = "ROC")$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 5):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 5):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 5):length(tmp_knn)],
-                           tmp_lda[(length(tmp_lda) - 5):length(tmp_lda)],
                            tmp_qda[(length(tmp_qda) - 5):length(tmp_qda)],
-                           tmp_logitboost[(length(tmp_logitboost) - 5):length(tmp_logitboost)],
-                           tmp_glm[(length(tmp_glm) - 5):length(tmp_glm)],
-                           tmp_nn[(length(tmp_nn) - 5):length(tmp_nn)])
-      names_vec <- c("rf", "svmRadial", "knn", "lda", "qda", "logitboost", "glm", "nnet")
+                           tmp_xgb[(length(tmp_xgb) - 5):length(tmp_xgb)])
+      names_vec <- c("rf", "svmRadial", "knn", "qda", "xgb")
     }
     
     if (outcome == "DIAGNOSIS") {
       tmp_rf <- train(outcome ~ ., data = item, method = "rf", 
-                      trControl = tc, tuneGrid = data.frame(.mtry = 20))$results
+                      trControl = tc, 
+                      tuneGrid = data.frame(.mtry = 20))$results
       tmp_svm <- train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
+                       trControl = tc, 
+                       tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
       tmp_knn <- train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, tuneGrid = data.frame(.k = 5))$results
-      tmp_lda <- train(outcome ~ ., data = item, method = "lda", 
-                       trControl = tc)$results
+                       trControl = tc, 
+                       tuneGrid = data.frame(.k = 5))$results
       tmp_qda <- train(outcome ~ ., data = item, method = "qda", 
                        trControl = tc)$results
-      tmp_logitboost <- train(outcome ~ ., data = item, method = "LogitBoost",
-                              trControl = tc, tuneGrid = data.frame(.nIter = 100))$results
-      tmp_nn <- train(outcome ~ ., data = item, method = "nnet",
-                      trControl = tc, tuneGrid = data.frame(.size = 8, .decay = 0))$results
+      tmp_xgb <- train(outcome ~ ., data = item, method = "xgbTree",
+                       trControl = tc, 
+                       tuneGrid = data.frame(.nrounds = 100, 
+                                             .max_depth = 6, 
+                                             .eta = 0.1, 
+                                             .gamma = 0, 
+                                             .colsample_bytree = .5,
+                                             .min_child_weight = 1, 
+                                             .subsample = .75))$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 3):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 3):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 3):length(tmp_knn)],
-                           tmp_lda[(length(tmp_lda) - 3):length(tmp_lda)],
                            tmp_qda[(length(tmp_qda) - 3):length(tmp_qda)],
-                           tmp_logitboost[(length(tmp_logitboost) - 3):length(tmp_logitboost)],
-                           tmp_nn[(length(tmp_nn) - 3):length(tmp_nn)])
-      names_vec <- c("rf", "svmRadial", "knn", "lda", "qda", "logitboost", "nnet")
+                           tmp_xgb[(length(tmp_xgb) - 3):length(tmp_xgb)])
+      names_vec <- c("rf", "svmRadial", "knn", "qda", "xgb")
     }
     
     if (outcome == "AGE") {
       tmp_rf <- train(outcome ~ ., data = item, method = "rf", 
-                      trControl = tc, tuneGrid = data.frame(.mtry = 20))$results
+                      trControl = tc, 
+                      tuneGrid = data.frame(.mtry = 20))$results
       tmp_svm <- train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
+                       trControl = tc, 
+                       tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
       tmp_knn <- train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, tuneGrid = data.frame(.k = 5))$results
-      tmp_glm <- train(outcome ~ ., data = item, method = "glm",
-                       trControl = tc)$results
+                       trControl = tc, 
+                       tuneGrid = data.frame(.k = 5))$results
+      tmp_xgb <- train(outcome ~ ., data = item, method = "xgbTree",
+                       trControl = tc, 
+                       tuneGrid = data.frame(.nrounds = 100, 
+                                             .max_depth = 6, 
+                                             .eta = 0.1, 
+                                             .gamma = 0, 
+                                             .colsample_bytree = .5,
+                                             .min_child_weight = 1, 
+                                             .subsample = .75))$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 5):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 5):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 5):length(tmp_knn)],
-                           tmp_glm[(length(tmp_glm) - 5):length(tmp_glm)])
-      names_vec <- c("rf", "svmRadial", "knn", "glm")
+                           tmp_xgb[(length(tmp_xgb) - 5):length(tmp_xgb)])
+      names_vec <- c("rf", "svmRadial", "knn", "xgb")
     }
     
     rownames(tmp_results) <- names_vec
-    data_results[[i]] <- tmp_results
-  }
+    return(tmp_results)
+  })
   
-  data_results
+  names(data_results) <- names(tmp_list)
+  bind_rows(data_results)
 }
 
 plot_against_raw <- function(data_list, raw, plot_names, 
