@@ -1,0 +1,60 @@
+---
+title: "DeepComBat package tester"
+output: html_document
+---
+
+# Preprocessing
+```{r}
+library(tidyverse)
+library(torch)
+library(neuroCombat)
+library(CovBat)
+
+#General
+library(tidyverse)
+library(reshape2)
+library(matlib)
+library(matrixStats)
+library(forcats)
+
+#DeepComBat
+library(torch)
+library(torchvision)
+library(neuroCombat)
+
+#Custom
+source("./code/utils.R")
+source("./code/data_loader.R")
+source("./code/combat_module.R")
+source("./code/covbat.R")
+source("./code/train.R")
+source("./code/eval_utils.R")
+```
+
+```{r}
+source("./code/load_packages.R")
+raw <- as.matrix(read.csv("./data/raw.csv", header = F))
+covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
+covariates$X.1 <- covariates$X.1 + 1
+final_visits_covariates <- covariates %>% group_by(subid) %>% filter(VISIT == max(VISIT))
+final_visits_covariates <- final_visits_covariates
+final_visits_raw <- raw[final_visits_covariates$X.1, ] %>% as.data.frame()
+```
+
+# Optimal DeepCombat
+```{r}
+setup_obj <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS,
+                              ~ Manufacturer,
+                              feature_matrix = final_visits_raw, 
+                              covariate_matrix = final_visits_covariates,
+                              reference_batch = "SIEMENS")
+
+trained_model <- deepcombat_trainer(setup = setup_obj,
+                                    train_epochs = c(5, 30, 5),
+                                    anneal_rate = 5,
+                                    lambda = 0.1,
+                                    optimizer = NULL,
+                                    verbose = TRUE)
+
+harmonized <- deepcombat_harmonize(setup_obj, trained_model, plot_logvars = TRUE)
+```

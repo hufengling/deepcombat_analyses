@@ -21,6 +21,7 @@ library(MASS)
 #Statistics
 library(twosamples)
 library(groupdata2)
+library(kBET)
 
 #Visualizations
 library(umap)
@@ -35,6 +36,7 @@ library(cluster)
 library(ggpubr)
 library(RColorBrewer)
 library(latex2exp)
+library(scales)
 
 #Tables
 library(gt)
@@ -44,5 +46,6 @@ library(gtsummary)
 source("./code/utils.R")
 source("./code/data_loader.R")
 source("./code/combat_module.R")
+source("./code/covbat.R")
 source("./code/train.R")
 source("./code/eval_utils.R")

@@ -6,7 +6,6 @@ output: html_document
 # Preprocessing
 ```{r}
 source("./code/load_packages.R")
-set.seed(20)
 raw <- as.matrix(read.csv("./data/raw.csv", header = F))
 covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
 covariates$X.1 <- covariates$X.1 + 1
@@ -203,45 +202,48 @@ deepcombat_latentmeans <- list(optimal = deepcombat_optimal$latent_mu,
   lapply(as.matrix) %>% lapply(as.data.frame)
 ```
 
-<!-- # Testing reconstruction loss over lambdas -->
-<!-- ```{r} -->
-<!-- n_latent_dim <- 16 -->
-<!-- deepcombat_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, -->
-<!--                                 n_hidden = 3, n_batch = 1, n_covariate = 4, -->
-<!--                                 inject_decoder = TRUE, inject_last = FALSE, deep_inject = FALSE, -->
-<!--                                 rescale = FALSE, rescale_n_batch = NULL) -->
-<!-- resid_optim <- optim_adam(deepcombat_model$parameters, lr = 0.01, weight_decay = 0) -->
-<!-- pretrained_model <- train_nn_annealer(train_epochs = c(25, 1, 1), -->
-<!--                                       anneal_rate = 5, -->
-<!--                                       beta_weights = c(0, 0, 0), -->
-<!--                                       torch_dl = adni_all_dl, -->
-<!--                                       torch_model = deepcombat_model, -->
-<!--                                       torch_optim = resid_optim, -->
-<!--                                       batch_weights = c(1, 1), -->
-<!--                                       pairwise_type = "none", verbose = T) -->
+# Benchmarking
+```{r}
+library(tictoc)
 
-<!-- recon_losses <- rep(0, 11) -->
-<!-- recon_losses[1] <- pretrained_model$final_recon_loss -->
+to_benchmark <- function() {
+  n_latent_dim <- 16
+  deepcombat_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim,
+                                  n_hidden = 3, n_batch = 1, n_covariate = 4,
+                                  inject_decoder = TRUE, inject_last = FALSE, deep_inject = FALSE,
+                                  rescale = FALSE, rescale_n_batch = NULL)
+  resid_optim <- optim_adam(deepcombat_model$parameters, lr = 0.01, weight_decay = 0)
+  
+  trained_model <- train_nn_annealer(train_epochs = c(5, 30, 5),
+                                     anneal_rate = 5,
+                                     beta_weights = c(.1, 0, 0),
+                                     torch_dl = adni_all_dl,
+                                     torch_model = deepcombat_model,
+                                     torch_optim = resid_optim,
+                                     batch_weights = c(1, 1),
+                                     pairwise_type = "none")
+  deepcombat_model <- trained_model$model
+  
+  deepcombat_model$eval()
+  deepcombat_optimal <- deepcombat_model$encode_decode(adni_ct,
+                                                       attr(input_list$input_list$data,
+                                                            which = "scaled:center") + input_list$mean,
+                                                       attr(input_list$input_list$data,
+                                                            which = "scaled:scale"),
+                                                       correct = c("combat", "combat"),
+                                                       mean_only = c(FALSE, FALSE),
+                                                       use_covariates = c(TRUE, TRUE),
+                                                       ref_batch = NULL, verbose = FALSE)
+}
 
-<!-- for (i in 0:9) { -->
-<!--   starting_val <- 0.003125 -->
-<!--   current_val <- starting_val * 2^i -->
-<!--   print(paste0("Currently fitting lambda of: ", current_val)) -->
+n_times <- 30
+run_time <- numeric(n_times)
+for (i in 1:n_times) {
+  print(i)
+  tic()
+  to_benchmark()
+  toc_obj <- toc()
+  run_time[i] <- toc_obj$toc - toc_obj$tic
+}
+```
 
-<!--   deepcombat_model <- vanilla_vae(feature_dim = 62, latent_dim = n_latent_dim, -->
-<!--                                 n_hidden = 3, n_batch = 1, n_covariate = 4, -->
-<!--                                 inject_decoder = TRUE, inject_last = FALSE, deep_inject = FALSE, -->
-<!--                                 rescale = FALSE, rescale_n_batch = NULL) -->
-<!-- resid_optim <- optim_adam(deepcombat_model$parameters, lr = 0.01, weight_decay = 0) -->
-
-<!--   trained_model <- train_nn_annealer(train_epochs = c(5, 30, 5), -->
-<!--                                      anneal_rate = 5, -->
-<!--                                      beta_weights = c(current_val, 0, 0), -->
-<!--                                      torch_dl = adni_all_dl, -->
-<!--                                      torch_model = deepcombat_model, -->
-<!--                                      torch_optim = resid_optim, -->
-<!--                                      batch_weights = c(1, 1), -->
-<!--                                      pairwise_type = "none", verbose = T) -->
-<!--   recon_losses[i + 1] <- trained_model$final_recon_loss -->
-<!-- } -->
-<!-- ``` -->

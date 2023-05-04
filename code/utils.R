@@ -131,7 +131,7 @@ make_input_list <- function(raw, covariates,
     cov_norm <- range01(cov)
   }
   
-  covbat_output <- covbat_fh(dat = t(raw), bat = batch, mod = cov_norm, ...)
+  covbat_output <- NULL#covbat_fh(dat = t(raw), bat = batch, mod = cov_norm, ...)
   if (get_combat_covbat) {
     return(list(combat = covbat_output$combat.out,
                 covbat = covbat_output))

@@ -155,6 +155,21 @@ vanilla_vae <- nn_module(
                 feat_logvar = feat_logvar, 
                 feat_z = feat_z))
   },
+  calculate_vae_dim = function(input_dim, latent_dim, n_hidden) {
+    if (input_dim <= latent_dim) {
+      stop("Latent dimension must be smaller than input dimension")
+    }
+    if (n_hidden == 0) {
+      return(c(input_dim, latent_dim))
+    }
+    hidden_dim <- rep(0, n_hidden)
+    range <- input_dim - latent_dim
+    for (i in 1:n_hidden) {
+      hidden_dim[i] <- latent_dim + floor(range * (n_hidden - i + 1) / (n_hidden + 1))
+    }
+    
+    return(c(input_dim, hidden_dim, latent_dim))
+  },
   encode_decode = function(torch_ds, raw_means, raw_sds,
                            correct = c("combat", "combat"),
                            mean_only = c(FALSE, FALSE),

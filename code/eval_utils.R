@@ -185,10 +185,18 @@ feature_plotter <- function(data_list, covariates, plot_names, col_num = NULL) {
   ggarrange(plotlist = feature_plot_list, nrow = 2, ncol = 3)
 }
 
-stats_tester <- function(data_list, covariates) {
+stats_tester <- function(data_list, covariates, nboots = 10000, raw_null = FALSE) {
   p_summary <- as.data.frame(matrix(rep(0, 21 * length(data_list)), nrow = length(data_list)))
   manova_df <- as.data.frame(matrix(rep(0, 9 * length(data_list)), nrow = length(data_list)))
   ad_df <- as.data.frame(matrix(rep(0, 5 * length(data_list)), nrow = length(data_list)))
+  
+  lr_p <- vector("list", length(data_list))
+  ad_p <- vector("list", length(data_list))
+  
+  if (raw_null) {
+    tmp_raw <- data_list[[1]]
+    data_list[[1]] <- tmp_raw[sample(1:nrow(tmp_raw)), ] 
+  }
   
   for (i in 1:length(data_list)) {
     # Univariate linear regression
@@ -198,6 +206,7 @@ stats_tester <- function(data_list, covariates) {
       mod$coefficients[-1, 4]
     }, simplify = T)
     
+    lr_p[[i]] <- p_vals
     mean_p <- rowMeans(p_vals)
     sd_p <- rowSds(p_vals)
     mean_log_p <- rowMeans(log(p_vals, base = 10), na.rm = T)
@@ -218,13 +227,16 @@ stats_tester <- function(data_list, covariates) {
     ad_b <- data_list[[i]][covariates$manufac == "False", ]
     tmp_ad_pvals <- rep(0, ncol(data_list[[i]]))
     for (j in 1:ncol(data_list[[i]])) {
-      tmp_ad_pvals[j] <- ad_test(ad_a[, j], ad_b[, j], keep.boots = F)[2]
+      tmp_ad_pvals[j] <- ad_test(ad_a[, j], ad_b[, j], 
+                                 keep.boots = F, nboots = nboots)[2]
     }
+    ad_p[[i]] <- tmp_ad_pvals
     ad_df[i, ] <- c(as.data.frame(names(data_list)[[i]]), 
                     mean(tmp_ad_pvals), 
                     sd(tmp_ad_pvals), 
                     mean(log(tmp_ad_pvals, base = 10), na.rm = T), 
                     sd(log(tmp_ad_pvals, base = 10), na.rm = T))
+    
   }
   colnames(p_summary) <- c("dataset", names(mean_p), paste0(names(mean_p), "_SD"),
                            paste0(names(mean_p), "_log"), paste0(names(mean_p), "_log_SD"))
@@ -232,7 +244,8 @@ stats_tester <- function(data_list, covariates) {
   colnames(ad_df) <- c("dataset", "pval", "pval_SD", "pval_log", "pval_log_SD")
   
   
-  return(list("lr" = p_summary, "manova" = manova_df, "ad" = ad_df))
+  return(list("lr" = p_summary, "manova" = manova_df, "ad" = ad_df,
+              "lr_p" = lr_p, "ad_p" = ad_p))
 }
 
 ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "manufac",
@@ -387,8 +400,8 @@ plot_against_raw <- function(data_list, raw, plot_names,
     against_raw_list[[i]] <- ggplot(tmp_df) + 
       geom_point(aes(raw, harmonized, color = col_name), size = 0.7) +
       geom_abline(intercept = 0, slope = 1) +
-      scale_x_continuous(limits = c(0.5, 4.5)) +
-      scale_y_continuous(limits = c(0.5, 4.5)) +
+      scale_x_continuous(limits = c(0.25, 5.5)) +
+      scale_y_continuous(limits = c(0.25, 5.5)) +
       theme_classic() + 
       labs(title = plot_names[i]) + 
       theme(legend.position="none",
@@ -397,5 +410,119 @@ plot_against_raw <- function(data_list, raw, plot_names,
   }
   
   ggarrange(plotlist = against_raw_list, 
+            ncol = 3, nrow = 2)
+}
+gg_qqplot <- function(ps, ci = 0.95, test) {
+  n  <- length(ps)
+  df <- data.frame(
+    observed = -log10(sort(ps)),
+    expected = -log10(ppoints(n)),
+    clower   = -log10(qbeta(p = (1 - ci) / 2, shape1 = 1:n, shape2 = n:1)),
+    cupper   = -log10(qbeta(p = (1 + ci) / 2, shape1 = 1:n, shape2 = n:1))
+  )
+  if (test == "lr") {
+    log10Pe <- expression(paste("Expected Uniform -log"[10], plain(p)))
+    log10Po <- expression(paste("Observed LR -log"[10], plain(p)))
+  }
+  if (test == "ad") {
+    log10Pe <- expression(paste("Expected Uniform -log"[10], plain(p)))
+    log10Po <- expression(paste("Observed AD -log"[10], plain(p)))
+  }
+  ggplot(df) +
+    geom_ribbon(
+      mapping = aes(x = expected, ymin = clower, ymax = cupper),
+      alpha = 0.1
+    ) +
+    geom_point(aes(expected, observed), shape = 1, size = 3) +
+    geom_abline(intercept = 0, slope = 1, alpha = 0.5) +
+    # geom_line(aes(expected, cupper), linetype = 2, size = 0.5) +
+    # geom_line(aes(expected, clower), linetype = 2, size = 0.5) +
+    xlab(log10Pe) +
+    ylab(log10Po)
+}
+
+plot_p_distributions <- function(manufac_stats, 
+                                 index_range, plot_names, 
+                                 test = c("lr", "ad"), y_scale = c(NA, NA, NA), 
+                                 use_neg_log = FALSE, 
+                                 plot_type = c("density", "qq")) {
+  if (test == "lr") {
+    p_dist_df <- manufac_stats$lr_p[index_range]
+  }
+  if (test == "ad") {
+    p_dist_df <- manufac_stats$ad_p[index_range]
+  }
+  if (!test %in% c("lr", "ad")) {
+    stop("test must be 'lr' or 'ad'")
+  }
+  if (!plot_type %in% c("density", "qq")) {
+    stop("plot_type must be 'density' or 'qq'")
+  }
+  
+  p_dist_list <- sapply(1:length(p_dist_df), function(i) {
+    if (test == "lr")
+      tmp <- as.data.frame(t(p_dist_df[[i]]))
+    if (test == "ad") {
+      tmp <- as.data.frame(p_dist_df[[i]])
+      names(tmp) <- "manufacTrue"
+    }
+    tmp
+  }, simplify = FALSE)
+  
+  p_plot_list <- vector("list", length(p_dist_list))
+  if (plot_type == "density") {
+    for (i in 1:length(p_dist_list)) {
+      p_plot_list[[i]] <- ggplot(p_dist_list[[i]], aes(x = manufacTrue)) +
+        geom_density() +
+        ylab("Density") + 
+        xlim(0, 1) +
+        theme_classic() + 
+        labs(title = plot_names[i]) + 
+        theme(legend.position="none",
+              plot.title = element_text(hjust = 0.5))
+      if (test == "lr") {
+        p_plot_list[[i]] <- p_plot_list[[i]] + 
+          xlab("Regression p-value")
+      }
+      if (test == "ad") {
+        p_plot_list[[i]] <- p_plot_list[[i]] + 
+          xlab("Anderson-Darling p-value")
+      }
+      if (!is.na(y_scale[1])) {
+        if (i == 1)
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[1])
+      }
+      if (!is.na(y_scale[2])) {
+        if (i %in% c(2, 3, 6))
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[2])
+      }
+      if (!is.na(y_scale[3])) {
+        if (i %in% c(4, 5))
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[3])
+      }
+    }
+  }
+  if (plot_type == "qq") {
+    for (i in 1:length(p_dist_list)) {
+      p_plot_list[[i]] <- gg_qqplot(p_dist_list[[i]]$manufacTrue, test = test) +
+        theme_classic() +
+        labs(title = plot_names[i]) +
+        theme(plot.title = element_text(hjust = 0.5))
+      
+      if (!is.na(y_scale[1])) {
+        if (i == 1)
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[1])
+      }
+      if (!is.na(y_scale[2])) {
+        if (i %in% c(2, 3, 6))
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[2])
+      }
+      if (!is.na(y_scale[3])) {
+        if (i %in% c(4, 5))
+          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[3])
+      }
+    }
+  }
+  ggarrange(plotlist = p_plot_list, 
             ncol = 3, nrow = 2)
 }
