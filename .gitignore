@@ -7,5 +7,7 @@
 .ipynb_checkpoints/*
 data/
 .DS_Store
-
+.RData
+.Rhistory
+.gitignore
 .Rproj.user
