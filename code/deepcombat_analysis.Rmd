@@ -6,6 +6,7 @@ output: html_document
 # Preprocessing
 ```{r}
 source("~/Documents/nnbatch/code/load_packages.R")
+library(DescTools)
 # all_raw <- read.csv("./data/raw.csv", header = F)
 all_cov <- read.csv("./data/covariates.csv")
 all_cov$SEX <- as.factor(all_cov$SEX)
@@ -385,28 +386,520 @@ gt(lambdas_manova, rowname_col = "Lambda") %>%
 
 # ML experiments
 ```{r}
-# set.seed(1)
-# manufac_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov, 
-#                                 outcome = "manufac",
-#                                 k_fold = 10, repeats = 5, verbose = T)
-# age_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov, 
-#                             outcome = "AGE",
-#                             k_fold = 10, repeats = 5, verbose = F)
-# sex_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov, 
-#                             outcome = "SEX",
-#                             k_fold = 10, repeats = 5, verbose = T)
-# diagnosis_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov, 
-#                                   outcome = "DIAGNOSIS",
-#                                   k_fold = 10, repeats = 5, verbose = T)
-# write.csv(manufac_results, "./data/for_paper/ml/manufac.csv")
-# write.csv(age_results, "./data/for_paper/ml/age.csv")
-# write.csv(sex_results, "./data/for_paper/ml/sex.csv")
-# write.csv(diagnosis_results, "./data/for_paper/ml/diagnosis.csv")
+set.seed(1)
+manufac_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov,
+                                outcome = "manufac",
+                                k_fold = 10, repeats = 10, verbose = T)
+age_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov,
+                            outcome = "AGE",
+                            k_fold = 10, repeats = 10, verbose = F)
+sex_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov,
+                            outcome = "SEX",
+                            k_fold = 10, repeats = 10, verbose = T)
+diagnosis_results <- ml_cv_tester(unique_data_list, 1:10, unique_cov,
+                                  outcome = "DIAGNOSIS",
+                                  k_fold = 10, repeats = 10, verbose = T)
+write.csv(manufac_results, "./data/for_paper/ml/manufac_100.csv")
+write.csv(age_results, "./data/for_paper/ml/age_100.csv")
+write.csv(sex_results, "./data/for_paper/ml/sex_100.csv")
+write.csv(diagnosis_results, "./data/for_paper/ml/diagnosis_100.csv")
 ```
 
+## Read individual ML Results
+```{r}
+ml_csv_paths <- list.files("./data/for_paper/ml", full.names = TRUE)
+ml_csv_paths <- ml_csv_paths[grepl("_100", ml_csv_paths)]
+
+ml_results <- lapply(ml_csv_paths, function(path) {
+  df <- path %>% 
+    read.csv() %>% 
+    rename(methods_name = names.tmp_list..i.)
+  results_list <- vector("list", length(unique_data_list))
+  n_per_list <- nrow(df) / length(unique_data_list)
+  for (i in 1:length(unique_data_list)) {
+    start_ind <- ((i - 1) * n_per_list + 1)
+    end_ind <- i * n_per_list
+    results_list[[i]] <- df[start_ind:end_ind, ]
+  }
+  results_list
+})
+names(ml_results) <- c("age", "diagnosis", "manufac", "sex")
+```
+
+## Manufac ML experiments figures
+```{r}
+manufac_methods <- ml_results$manufac[methods_range]
+manufac_lambdas <- ml_results$manufac[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost")
+
+manufac_methods_df <- bind_rows(manufac_methods) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(methods_names, each = nrow(manufac_methods[[1]]))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+manufac_methods_df <- manufac_methods_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(ROC = mean(validation_roc),
+            ROCSD = sd(validation_roc) / 10 * 1.984)
+
+manufac_methods <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = validation_roc, 
+                                                  fill = harm_method_releveled)) + 
+  geom_boxplot() +
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Batch") +
+  xlab("Machine Learning Algorithm") +
+  ylab("AUROC") + 
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_methods
+ggsave(filename = "figures/plots/manufac_methods.png", 
+       plot = manufac_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+manufac_methods <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = ROC, 
+                                                  fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0.5, 1)) +
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Batch") +
+  ylab("AUROC") + 
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_methods
+ggsave(filename = "figures/plots/manufac_methods.png", 
+       plot = manufac_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+### Manufac P-values
+```{r}
+manufac_methods_df %>% 
+  group_by(algorithm, harm_method) %>% 
+  summarize(val_mean = mean(validation_roc)) %>% 
+  print(n = 30)
+with(filter(manufac_methods_df, algorithm == "SVM (Radial)"), pairwise.t.test(validation_roc, harm_method))
+with(filter(manufac_methods_df, algorithm == "QDA"), pairwise.t.test(validation_roc, harm_method))
+with(filter(manufac_methods_df, algorithm == "KNN"), pairwise.t.test(validation_roc, harm_method))
+with(filter(manufac_methods_df, algorithm == "RF"), pairwise.t.test(validation_roc, harm_method))
+with(filter(manufac_methods_df, algorithm == "XGBoost"), pairwise.t.test(validation_roc, harm_method))
+
+tmp <- filter(manufac_methods_df, algorithm == "RF")
+t.test(tmp[tmp$harm_method == "DeepComBat", "validation_roc"], tmp[tmp$harm_method == "CovBat", "validation_roc"])
+```
+
+
+## Manufac ML Lambdas figure
+```{r}
+manufac_lambdas_df <- bind_rows(manufac_lambdas) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = nrow(manufac_lambdas[[1]]))))
+manufac_lambdas_df$harm_method_releveled = factor(manufac_lambdas_df$harm_method, 
+                                                  labels = lambdas_names)
+
+manufac_lambdas_df <- manufac_lambdas_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(ROC = mean(validation_roc),
+            ROCSD = sd(validation_roc) / 10 * 1.984)
+
+manufac_lambdas <- ggplot(manufac_lambdas_df, aes(x = algorithm_releveled, y = validation_roc, 
+                                                  fill = harm_method), parse = TRUE) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Batch") +
+  xlab("Machine Learning Algorithm") +
+  ylab("AUROC") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_lambdas
+ggsave(filename = "figures/plots/manufac_lambdas.png", 
+       plot = manufac_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+manufac_lambdas <- ggplot(manufac_lambdas_df, aes(x = algorithm_releveled, y = ROC, 
+                                                  fill = harm_method_releveled), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0.5, 1)) +
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) +
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Batch") +
+  ylab("AUROC") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_lambdas
+ggsave(filename = "figures/plots/manufac_lambdas.png", 
+       plot = manufac_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## SEX ML experiments figures
+```{r}
+sex_methods <- ml_results$sex[methods_range]
+sex_lambdas <- ml_results$sex[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost")
+
+sex_methods_df <- bind_rows(sex_methods) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(methods_names, each = nrow(sex_methods[[1]]))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+sex_methods_df <- sex_methods_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(ROC = mean(validation_roc),
+            ROCSD = sd(validation_roc) / 10 * 1.984)
+
+sex_methods <- ggplot(sex_methods_df, aes(x = algorithm_releveled, y = validation_roc, 
+                                                  fill = harm_method_releveled)) + 
+  geom_boxplot() +
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Sex") +
+  xlab("Machine Learning Algorithm") +
+  ylab("AUROC") + 
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_methods
+ggsave(filename = "figures/plots/sex_methods.png", 
+       plot = sex_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+sex_methods <- ggplot(sex_methods_df, aes(x = algorithm_releveled, y = ROC, 
+                                          fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0.5, 1)) +
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Sex") +
+  ylab("AUROC") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_methods
+ggsave(filename = "figures/plots/sex_methods.png", 
+       plot = sex_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## SEX ML Lambdas figure
+```{r}
+sex_lambdas_df <- bind_rows(sex_lambdas) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = nrow(sex_lambdas[[1]]))))
+sex_lambdas_df$harm_method_releveled = factor(sex_lambdas_df$harm_method, 
+                                                  labels = lambdas_names)
+
+sex_lambdas_df <- sex_lambdas_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(ROC = mean(validation_roc),
+            ROCSD = sd(validation_roc) / 10 * 1.984)
+
+sex_lambdas <- ggplot(sex_lambdas_df, aes(x = algorithm_releveled, y = validation_roc, 
+                                                  fill = harm_method), parse = TRUE) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Sex") +
+  xlab("Machine Learning Algorithm") +
+  ylab("AUROC") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_lambdas
+ggsave(filename = "figures/plots/sex_lambdas.png", 
+       plot = sex_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+sex_lambdas <- ggplot(sex_lambdas_df, aes(x = algorithm_releveled, y = ROC, 
+                                          fill = harm_method_releveled), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
+                position = position_dodge(.9)) +
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0.5, 1)) +
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Sex") +
+  ylab("AUROC") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_lambdas
+ggsave(filename = "figures/plots/sex_lambdas.png", 
+       plot = sex_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## DIAGNOSIS ML experiments figures
+```{r}
+diagnosis_methods <- ml_results$diagnosis[methods_range]
+diagnosis_lambdas <- ml_results$diagnosis[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost")
+
+matches <- lapply(1:1000, function(i) {
+  diag <- unique_cov$DIAGNOSIS
+  mean(diag == sample(diag, length(diag), replace = FALSE))
+}) %>% unlist() %>% mean()
+
+diagnosis_methods_df <- bind_rows(diagnosis_methods) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(methods_names, each = nrow(diagnosis_methods[[1]]))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+diagnosis_methods_df <- diagnosis_methods_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(Accuracy = mean(validation_accuracy),
+            AccuracySD = sd(validation_accuracy) / 10 * 1.984)
+
+diagnosis_methods <- ggplot(diagnosis_methods_df, aes(x = algorithm_releveled, y = validation_accuracy, 
+                                                  fill = harm_method_releveled)) + 
+  geom_boxplot() +
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Diagnosis") +
+  xlab("Machine Learning Algorithm") +
+  ylab("Accuracy") + 
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diagnosis_methods
+ggsave(filename = "figures/plots/diagnosis_methods.png", 
+       plot = diagnosis_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+diagnosis_methods <- ggplot(diagnosis_methods_df, aes(x = algorithm_releveled, y = Accuracy, 
+                                                 fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.372, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0, 1)) +
+  geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
+                position = position_dodge(.9)) + 
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Diagnosis") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diagnosis_methods
+ggsave(filename = "figures/plots/diag_methods.png", 
+       plot = diag_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## DIAGNOSIS ML Lambdas figure
+```{r}
+diagnosis_lambdas_df <- bind_rows(diagnosis_lambdas) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "qda" ~ "QDA",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", "QDA", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = nrow(diagnosis_lambdas[[1]]))))
+diagnosis_lambdas_df$harm_method_releveled = factor(diagnosis_lambdas_df$harm_method, 
+                                                  labels = lambdas_names)
+
+diagnosis_lambdas_df <- diagnosis_lambdas_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(Accuracy = mean(validation_accuracy),
+            AccuracySD = sd(validation_accuracy) / 10 * 1.984)
+
+diagnosis_lambdas <- ggplot(diagnosis_lambdas_df, aes(x = algorithm_releveled, y = validation_accuracy, 
+                                                  fill = harm_method), parse = TRUE) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Diagnosis") +
+  xlab("Machine Learning Algorithm") +
+  ylab("Accuracy") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diagnosis_lambdas
+ggsave(filename = "figures/plots/diagnosis_lambdas.png", 
+       plot = diagnosis_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+diagnosis_lambdas <- ggplot(diagnosis_lambdas_df, aes(x = algorithm_releveled, y = Accuracy, 
+                                                 fill = harm_method_releveled), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.372, color = "red", linetype = "dashed") + coord_cartesian(ylim = c(0, 1)) +
+  geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
+                position = position_dodge(.9)) +
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Diagnosis") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diagnosis_lambdas
+ggsave(filename = "figures/plots/diag_lambdas.png", 
+       plot = diag_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## AGE ML experiments figures
+```{r}
+age_methods <- ml_results$age[methods_range]
+age_lambdas <- ml_results$age[lambdas_range]
+ml_names <- c("RF", "SVM (Radial)", "KNN", "XGBoost")
+
+age_methods_df <- bind_rows(age_methods) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)", 
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(methods_names, each = nrow(age_methods[[1]]))),
+         harm_method_releveled = fct_relevel(harm_method, 
+                                             "Raw", "ComBat", "CovBat", 
+                                             "dcVAE", "gcVAE", "DeepComBat"))
+
+age_methods_df <- age_methods_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(Rsquared = mean(validation_r2),
+            RsquaredSD = sd(validation_r2) / 10 * 1.984)
+
+age_methods <- ggplot(age_methods_df, aes(x = algorithm_releveled, y = validation_r2, 
+                                                  fill = harm_method_releveled)) + 
+  geom_boxplot() +
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Age") +
+  xlab("Machine Learning Algorithm") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_methods
+ggsave(filename = "figures/plots/age_methods.png", 
+       plot = age_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+age_methods <- ggplot(age_methods_df, aes(x = algorithm_releveled, y = Rsquared, 
+                                          fill = harm_method_releveled)) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) +
+  geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
+                position = position_dodge(.9)) + 
+  scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Age") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_methods
+ggsave(filename = "figures/plots/age_methods.png", 
+       plot = age_methods, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+## AGE ML Lambdas figure
+```{r}
+age_lambdas_df <- bind_rows(age_lambdas) %>% 
+  mutate(algorithm = case_when(ml == "rf" ~ "RF",
+                               ml == "svm" ~ "SVM (Radial)",
+                               ml == "knn" ~ "KNN",
+                               ml == "xgb" ~ "XGBoost"),
+         algorithm_releveled = fct_relevel(algorithm, 
+                                           "SVM (Radial)",
+                                           "KNN", "RF", "XGBoost"),
+         harm_method = as.factor(rep(c("A", "B", "C", "D", "E", "F"), each = nrow(age_lambdas[[1]]))))
+age_lambdas_df$harm_method_releveled = factor(age_lambdas_df$harm_method, 
+                                                  labels = lambdas_names)
+
+age_lambdas_df <- age_lambdas_df %>% 
+  group_by(algorithm_releveled, harm_method_releveled) %>% 
+  summarize(Rsquared = mean(validation_r2),
+            RsquaredSD = sd(validation_r2) / 10 * 1.984)
+
+age_lambdas <- ggplot(age_lambdas_df, aes(x = algorithm_releveled, y = validation_r2, 
+                                                  fill = harm_method), parse = TRUE) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Age") +
+  xlab("Machine Learning Algorithm") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_lambdas
+ggsave(filename = "figures/plots/age_lambdas.png", 
+       plot = age_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+
+age_lambdas <- ggplot(age_lambdas_df, aes(x = algorithm_releveled, y = Rsquared, 
+                                          fill = harm_method_releveled), parse = TRUE) + 
+  geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
+                position = position_dodge(.9)) +
+  scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Age") +
+  ylab(TeX("$R^2$")) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_lambdas
+ggsave(filename = "figures/plots/age_lambdas.png", 
+       plot = age_lambdas, 
+       width = 2128, height = 1575, units = "px", type = "cairo-png")
+```
+
+# ML Experiments (group-level)
 ## Read ML csvs
 ```{r}
-ml_results <- lapply(list.files("./data/for_paper/ml", full.names = TRUE), function(path) {
+ml_list <- list.files("./data/for_paper/ml", full.names = TRUE)
+ml_list <- ml_list[!grepl("_100", ml_list)]
+ml_results <- lapply(ml_list, function(path) {
   df <- path %>% 
     read.csv() %>% 
     as.data.frame()
@@ -421,7 +914,6 @@ ml_results <- lapply(list.files("./data/for_paper/ml", full.names = TRUE), funct
 })
 names(ml_results) <- c("age", "diagnosis", "manufac", "sex")
 ```
-
 
 ## Manufac ML experiments figures
 ```{r}
@@ -442,14 +934,18 @@ manufac_methods_df <- bind_rows(manufac_methods) %>%
 manufac_methods <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = ROC, 
                                                   fill = harm_method_releveled)) + 
   geom_bar(stat = "identity", position = position_dodge(.9)) + 
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") + 
   geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
                 position = position_dodge(.9)) + 
   scale_fill_manual(values = my_colors, name = "Methods") + 
+  coord_cartesian(ylim = c(0.5, 1)) +
+  ggtitle("Batch") +
   xlab("Machine Learning Algorithm") +
   ylab("AUROC") + 
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); manufac_methods
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_methods
 ggsave(filename = "figures/plots/manufac_methods.png", 
        plot = manufac_methods, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -472,11 +968,13 @@ manufac_lambdas <- ggplot(manufac_lambdas_df, aes(x = algorithm_releveled, y = R
   geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
                 position = position_dodge(.9)) +
   scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Batch") +
   xlab("Machine Learning Algorithm") +
   ylab("AUROC") +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); manufac_lambdas
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); manufac_lambdas
 ggsave(filename = "figures/plots/manufac_lambdas.png", 
        plot = manufac_lambdas, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -504,11 +1002,13 @@ sex_methods <- ggplot(sex_methods_df, aes(x = algorithm_releveled, y = ROC,
   geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
                 position = position_dodge(.9)) + 
   scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Sex") +
   xlab("Machine Learning Algorithm") +
   ylab("AUROC") +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); sex_methods
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_methods
 ggsave(filename = "figures/plots/sex_methods.png", 
        plot = sex_methods, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -531,11 +1031,13 @@ sex_lambdas <- ggplot(sex_lambdas_df, aes(x = algorithm_releveled, y = ROC,
   geom_errorbar(aes(ymin = ROC - ROCSD, ymax = ROC + ROCSD), 
                 position = position_dodge(.9)) +
   scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Sex") +
   xlab("Machine Learning Algorithm") +
   ylab("AUROC") +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); sex_lambdas
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); sex_lambdas
 ggsave(filename = "figures/plots/sex_lambdas.png", 
        plot = sex_lambdas, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -563,10 +1065,12 @@ diag_methods <- ggplot(diagnosis_methods_df, aes(x = algorithm_releveled, y = Ac
   geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
                 position = position_dodge(.9)) + 
   scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Diagnosis") +
   xlab("Machine Learning Algorithm") +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); diag_methods
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diag_methods
 ggsave(filename = "figures/plots/diag_methods.png", 
        plot = diag_methods, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -589,10 +1093,12 @@ diag_lambdas <- ggplot(diagnosis_lambdas_df, aes(x = algorithm_releveled, y = Ac
   geom_errorbar(aes(ymin = Accuracy - AccuracySD, ymax = Accuracy + AccuracySD), 
                 position = position_dodge(.9)) +
   scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Diagnosis") +
   xlab("Machine Learning Algorithm") +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); diag_lambdas
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); diag_lambdas
 ggsave(filename = "figures/plots/diag_lambdas.png", 
        plot = diag_lambdas, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -620,11 +1126,13 @@ age_methods <- ggplot(age_methods_df, aes(x = algorithm_releveled, y = Rsquared,
   geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
                 position = position_dodge(.9)) + 
   scale_fill_manual(values = my_colors, name = "Methods") + 
+  ggtitle("Age") +
   xlab("Machine Learning Algorithm") +
   ylab(TeX("$R^2$")) +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); age_methods
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_methods
 ggsave(filename = "figures/plots/age_methods.png", 
        plot = age_methods, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -647,11 +1155,13 @@ age_lambdas <- ggplot(age_lambdas_df, aes(x = algorithm_releveled, y = Rsquared,
   geom_errorbar(aes(ymin = Rsquared - RsquaredSD, ymax = Rsquared + RsquaredSD), 
                 position = position_dodge(.9)) +
   scale_fill_manual(values = my_colors_lambdas, labels = unname(lambdas_names), name = "Lambdas") + 
+  ggtitle("Age") +
   xlab("Machine Learning Algorithm") +
   ylab(TeX("$R^2$")) +
   theme_minimal() +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()); age_lambdas
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)); age_lambdas
 ggsave(filename = "figures/plots/age_lambdas.png", 
        plot = age_lambdas, 
        width = 2128, height = 1575, units = "px", type = "cairo-png")
@@ -839,14 +1349,14 @@ ggsave(filename = "figures/plots/lambdas_p_natmet.png",
 
 # ML
 ml_combined_methods <- ggarrange(plotlist = list(manufac_methods, sex_methods, 
-                                                 diag_methods, age_methods), common.legend = TRUE, 
+                                                 diagnosis_methods, age_methods), common.legend = TRUE, 
                                  legend = "right",
-                                 ncol = 2, nrow = 2, labels = "AUTO")
+                                 ncol = 2, nrow = 2, labels = "AUTO"); ml_combined_methods
 
 ml_combined_lambdas <- ggarrange(plotlist = list(manufac_lambdas, sex_lambdas, 
-                                                 diag_lambdas, age_lambdas), common.legend = TRUE, 
+                                                 diagnosis_lambdas, age_lambdas), common.legend = TRUE, 
                                  legend = "right",
-                                 ncol = 2, nrow = 2, labels = "AUTO")
+                                 ncol = 2, nrow = 2, labels = "AUTO"); ml_combined_lambdas
 
 ggsave(filename = "figures/plots/methods_ml_natmet.png",
        plot = ml_combined_methods,
@@ -857,11 +1367,11 @@ ggsave(filename = "figures/plots/lambdas_ml_natmet.png",
 
 # Qualitative
 combined_qual_methods <- ggarrange(plotlist = list(methods_feature_list, methods_pca_list, 
-                                                  flipped_methods_umap, methods_raw), 
-                                  ncol = 2, nrow = 2, labels = "AUTO")
+                                                   flipped_methods_umap, methods_raw), 
+                                   ncol = 2, nrow = 2, labels = "AUTO")
 combined_qual_lambdas <- ggarrange(plotlist = list(lambdas_feature_list, lambdas_pca_list, 
-                                                  flipped_lambdas_umap, lambdas_raw), 
-                                  ncol = 2, nrow = 2, labels = "AUTO")
+                                                   flipped_lambdas_umap, lambdas_raw), 
+                                   ncol = 2, nrow = 2, labels = "AUTO")
 
 ggsave(filename = "figures/plots/methods_qual_natmet.png",
        plot = combined_qual_methods,
@@ -871,77 +1381,7 @@ ggsave(filename = "figures/plots/lambdas_qual_natmet.png",
        width = 4256, height = 3150, units = "px", type = "cairo-png")
 ```
 
-# Manual Caret
-```{r}
-train_prop <- 0.8
-permute_outcome <- FALSE
-outcome <- "manufac"
-n_splits <- 50
-is_glm <- FALSE
-balanced_resample <- FALSE
 
-fit_manual_caret <- function(data_list, names, train_prop = 0.8, permute_outcome = FALSE, outcome = "manufac",
-                             n_splits = 30, is_glm = TRUE, balanced_resample = TRUE) {
-  tmp_list <- data_list
-  outcome_vec <- covariates[outcome]
-  names(outcome_vec) <- "outcome"
-  tmp_list <- lapply(tmp_list, function(item) {
-    cbind(as.data.frame(item), outcome = outcome_vec)
-  })
-  
-  for (i in 1:length(data_list)) {
-    df <- tmp_list[[i]]
-    
-    train_aucs <- rep(0, n_splits)
-    val_aucs <- rep(0, n_splits)
-    for (j in 1:n_splits) {
-      if (permute_outcome) {
-        df$outcome <- sample(df$outcome)
-      }
-      
-      if (balanced_resample) {
-        true_inds <- which(df$outcome == "True")
-        false_inds <- which(df$outcome == "False")
-        train_ind <- c(sample(true_inds, floor(length(true_inds) * train_prop)), 
-                       sample(false_inds, floor(length(false_inds) * train_prop))) 
-      } else {
-        train_ind <- sample(1:nrow(df), floor(nrow(df) * train_prop))
-      }
-      
-      train <- df[train_ind, ]
-      val <- df[-train_ind, ] 
-      
-      if (!is_glm) {
-        train_mod <- lda(outcome ~ ., data = train)
-        train_pred <- predict(train_mod)$posterior[, 2]
-        val_pred <- predict(train_mod, newdata = val[, 1:(ncol(df) - 1)])$posterior[, 2]
-      } else {
-        train_mod <- glm(outcome ~ ., data = train, family = binomial())
-        train_pred <- train_mod$fitted.values
-        val_pred <- predict(train_mod, newdata = val[, 1:(ncol(df)- 1)], type = "response")
-      }
-      
-      train_aucs[j] <- roc(response = train$outcome, predictor = train_pred, 
-                           levels = c("True", "False"), quiet = T, direction = ">")$auc; train_aucs[j]
-      val_aucs[j] <- roc(response = val$outcome, predictor = val_pred,
-                         levels = c("True", "False"), quiet = T, direction = ">")$auc; val_aucs[j]
-      confusionMatrix(reference = train$outcome, 
-                      data = as.factor(ifelse(train_pred > 0.5, "True", "False")))
-      confusionMatrix(reference = val$outcome, 
-                      data = as.factor(ifelse(val_pred > 0.5, "True", "False")))
-      ggplot(cbind(y = as.data.frame(train$outcome), pred = as.data.frame(train_pred))) + geom_density(aes(train_pred, fill = `train$outcome`), alpha = 0.5)
-      ggplot(cbind(y = as.data.frame(val$outcome), pred = as.data.frame(val_pred))) + geom_density(aes(val_pred, fill = `val$outcome`), alpha = 0.5)
-    }
-    print(paste0(names[i], " Training: ", round(mean(train_aucs), 3), " (", round(sd(train_aucs), 3), "). Validation: ", round(mean(val_aucs), 3), " (", round(sd(val_aucs), 3), ")"))
-  }
-  return(NULL)
-}
-
-fit_manual_caret(data_list[methods_range], method_names, is_glm = TRUE, balanced_resample = TRUE)
-fit_manual_caret(data_list[methods_range], method_names, is_glm = FALSE, balanced_resample = TRUE)
-fit_manual_caret(data_list[methods_range], method_names, is_glm = TRUE, balanced_resample = FALSE)
-fit_manual_caret(data_list[methods_range], method_names, is_glm = FALSE, balanced_resample = FALSE)
-```
 
 # For Grant
 ```{r}

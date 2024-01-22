@@ -42,10 +42,12 @@ library(scales)
 library(gt)
 library(gtsummary)
 
+library(here)
+
 #Custom
-source("./code/utils.R")
-source("./code/data_loader.R")
-source("./code/combat_module.R")
-source("./code/covbat.R")
-source("./code/train.R")
-source("./code/eval_utils.R")
+source("/home/fengling/Documents/nnbatch/code/utils.R")
+source("/home/fengling/Documents/nnbatch/code/data_loader.R")
+source("/home/fengling/Documents/nnbatch/code/combat_module.R")
+#source("/home/fengling/Documents/nnbatch/code/covbat.R")
+source("/home/fengling/Documents/nnbatch/code/train.R")
+source("/home/fengling/Documents/nnbatch/code/eval_utils.R")
