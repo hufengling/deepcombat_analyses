@@ -6,6 +6,8 @@ output: html_document
 # Load libraries
 ```{r}
 library(tidyverse)
+library(here)
+
 library(DeepComBat)
 library(neuroCombat)
 library(CovBat)
@@ -15,7 +17,6 @@ library(ggfortify)
 library(ggpubr)
 
 library(umap)
-
 library(caret)
 library(matrixStats)
 library(twosamples)
@@ -28,111 +29,152 @@ source("/home/fengling/Documents/nnbatch/code/revisions/combat_from_train.R")
 # Preprocessing
 ```{r}
 source("./code/load_packages.R")
-raw <- as.matrix(read.csv("./data/raw.csv", header = F))
-covariates <- read.csv("./data/covariates.csv", stringsAsFactors = T)
-covariates$X.1 <- covariates$X.1 + 1
-final_visits_covariates <- covariates %>% group_by(subid) %>% filter(VISIT == max(VISIT))
-final_visits_covariates <- final_visits_covariates %>% mutate(manufac = Manufacturer)
-final_visits_raw <- raw[final_visits_covariates$X.1, ]
+all_cov <- read.csv("./data/covariates.csv")
+all_cov$SEX <- as.factor(all_cov$SEX)
+all_cov$DIAGNOSIS <- as.factor(all_cov$DIAGNOSIS)
+all_cov$Random <- as.factor(all_cov$Random)
+all_cov$manufac <- as.factor(all_cov$manufac)
+all_cov$Manufacturer <- as.factor(all_cov$Manufacturer)
 
-cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, final_visits_covariates)[, -1]
-batch <- as.matrix(model.matrix(~ manufac, final_visits_covariates)[, -1])
+unique_cov <- all_cov %>% 
+  mutate(X.1 = X.1 + 1) %>% 
+  group_by(subid) %>% 
+  filter(VISIT == max(VISIT)) %>% 
+  as.data.frame()
+rm(all_cov)
+
+raw <- as.matrix(read.csv("./data/raw.csv", header = F))
+unique_raw <- raw[unique_cov$X.1, ]
+rm(raw)
+
+cov <- model.matrix(~ SEX + DIAGNOSIS + AGE, unique_cov)[, -1]
+batch <- as.matrix(model.matrix(~ Manufacturer, unique_cov)[, -1])
 
 files_list <- lapply(list.files("./data/for_paper", 
                                 full.names = TRUE, pattern = "*.csv"), 
                      read_csv)
 
-combat_harmonized <- neuroCombat(dat = t(final_visits_raw), batch = final_visits_covariates$manufac, mod = cov)$dat.combat %>% t()
-covbat_harmonized <- covbat(dat = t(final_visits_raw), bat = final_visits_covariates$manufac, mod = cov)$dat.covbat %>% t()
+combat_harmonized <- neuroCombat(dat = t(unique_raw), 
+                                 batch = unique_cov$Manufacturer, mod = cov)$dat.combat %>% t()
+covbat_harmonized <- covbat(dat = t(unique_raw), 
+                            bat = unique_cov$Manufacturer, mod = cov)$dat.covbat %>% t()
 
-setup <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ manufac, final_visits_raw, final_visits_covariates)
+setup <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ Manufacturer, unique_raw, unique_cov)
 train <- deepcombat_trainer(setup, verbose = TRUE)
 harmonized <- deepcombat_harmonize(setup, train, plot_logvars = TRUE)
 ```
 
 # Save harmonized data
 ```{r}
-write.csv(combat_harmonized, "./data/revisions/combat.csv")
-write.csv(covbat_harmonized, "./data/revisions/covbat.csv")
-write.csv(harmonized$harmonized, "./data/revisions/deepcombat_01.csv")
+write.csv(combat_harmonized, "./data/revisions/internal_harmonization/combat.csv", row.names = F)
+write.csv(covbat_harmonized, "./data/revisions/internal_harmonization/covbat.csv", row.names = F)
+write.csv(harmonized$harmonized, "./data/revisions/deepcombat_01.csv", row.names = F)
 ```
 
-# Statistical testing
+# Trying different lambdas
 ```{r}
-data_list <- list(raw = final_visits_raw, combat = combat_harmonized, 
-                  covbat = covbat_harmonized, dc = harmonized$harmonized,
-                  cvae = files_list[[6]], gcvae = files_list[[7]])
-stats_test <- stats_tester(data_list[1:4], final_visits_covariates)
-stats_test[[1]]
+setup_00625 <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ Manufacturer, 
+                                unique_raw, unique_cov)
+train_00625 <- deepcombat_trainer(setup_00625, lambda = 0.00625, verbose = TRUE)
+harmonized_00625 <- deepcombat_harmonize(setup_00625, train_00625, plot_logvars = TRUE)
 
-kbet_list <- lapply(data_list, function(df) {
-  kbet_obj <- kBET(df, batch = final_visits_covariates$manufac)
-  return(kbet_obj)
-})
+setup_025 <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ Manufacturer, 
+                                unique_raw, unique_cov)
+train_025 <- deepcombat_trainer(setup_025, lambda = 0.025, verbose = TRUE)
+harmonized_025 <- deepcombat_harmonize(setup_025, train_025, plot_logvars = TRUE)
 
-kbet_df <- lapply(kbet_list, function(kbet_out) {kbet_out$summary[1, ]}) %>% 
-  do.call(rbind, .) %>% 
-  rename(`Expected kBET` = kBET.expected, `Observed kBET` = kBET.observed, `p-value` = kBET.signif) %>% round(digits = 3)
+setup_4 <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ Manufacturer, 
+                                unique_raw, unique_cov)
+train_4 <- deepcombat_trainer(setup_4, lambda = 0.4, verbose = TRUE)
+harmonized_4 <- deepcombat_harmonize(setup_4, train_4, plot_logvars = TRUE)
+
+setup_16 <- deepcombat_setup(~ AGE + SEX + DIAGNOSIS, ~ Manufacturer, 
+                                unique_raw, unique_cov)
+train_16 <- deepcombat_trainer(setup_16, lambda = 1.6, verbose = TRUE)
+harmonized_16 <- deepcombat_harmonize(setup_16, train_16, plot_logvars = TRUE)
 ```
 
-# ML testing
 ```{r}
-feature_plotter(data_list, final_visits_covariates, names(data_list))
-pca_plotter(data_list, final_visits_covariates, names(data_list))
-umap_plotter(data_list, final_visits_covariates, names(data_list))
-
-manufac_ml <- ml_cv_tester(data_list, 1:4, final_visits_covariates, 
-                           outcome = "manufac", repeats = 20)
-
-ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost")
-manufac_methods <- vector("list", length(data_list[1:4]))
-n_per_list <- nrow(manufac_ml) / length(data_list[1:4])
-for (i in 1:length(data_list[1:4])) {
-  start_ind <- ((i - 1) * n_per_list + 1)
-  end_ind <- i * n_per_list
-  manufac_methods[[i]] <- manufac_ml[start_ind:end_ind, ]
-}
-
-manufac_methods_df <- bind_rows(manufac_ml) %>% 
-  mutate(algorithm = as.factor(rep(ml_names, length(manufac_methods))),
-         algorithm_releveled = fct_relevel(algorithm, 
-                                           "SVM (Radial)", "QDA", 
-                                           "KNN", "RF", "XGBoost"),
-         harm_method = as.factor(rep(c("Raw", "ComBat", "CovBat", 
-                                       "DeepComBat"),
-                                     each = length(ml_names))),
-         harm_method_releveled = fct_relevel(harm_method, 
-                                             "Raw", "ComBat", "CovBat", 
-                                             "DeepComBat"))
-
-manufac_methods_df <- manufac_methods_df %>% 
-  group_by(algorithm_releveled, harm_method_releveled) %>% 
-  summarize(ROC = mean(validation_roc),
-            ROCSD = sd(validation_roc) / 10 * 1.984)
-
-my_colors <- c("#1F78B4", "#B2DF8A", "#33A02C", "#CAB2D6")
-manufac_plot <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = Accuracy, 
-                                               fill = harm_method_releveled)) + 
-  geom_bar(stat = "identity", position = position_dodge(.9)) + 
-  geom_hline(yintercept = 0.33, color = "red", linetype = "dashed") + 
-  geom_errorbar(aes(ymin = Accuracy - 1.984 * AccuracySD / sqrt(200), ymax = Accuracy + 1.984 * AccuracySD / sqrt(200)), 
-                position = position_dodge(.9)) + 
-  scale_fill_manual(values = my_colors, name = "Methods") + 
-  coord_cartesian(ylim = c(0.33, 1)) +
-  ggtitle("Batch") +
-  xlab("Machine Learning Algorithm") +
-  ylab("AUROC") + 
-  theme_minimal() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        plot.title = element_text(hjust = 0.5)); manufac_plot
+write.csv(harmonized_00625$harmonized, "./data/revisions/internal_lambdas/deepcombat_00625.csv", row.names = F)
+write.csv(harmonized_025$harmonized, "./data/revisions/internal_lambdas/deepcombat_025.csv", row.names = F)
+write.csv(harmonized_4$harmonized, "./data/revisions/internal_lambdas/deepcombat_4.csv", row.names = F)
+write.csv(harmonized_16$harmonized, "./data/revisions/internal_lambdas/deepcombat_16.csv", row.names = F)
 ```
+
+<!-- # Statistical testing -->
+<!-- ```{r} -->
+<!-- data_list <- list(raw = final_visits_raw, combat = combat_harmonized,  -->
+<!--                   covbat = covbat_harmonized, dc = harmonized$harmonized, -->
+<!--                   cvae = files_list[[6]], gcvae = files_list[[7]]) -->
+<!-- stats_test <- stats_tester(data_list[1:4], final_visits_covariates) -->
+<!-- stats_test[[1]] -->
+
+<!-- kbet_list <- lapply(data_list, function(df) { -->
+<!--   kbet_obj <- kBET(df, batch = final_visits_covariates$manufac) -->
+<!--   return(kbet_obj) -->
+<!-- }) -->
+
+<!-- kbet_df <- lapply(kbet_list, function(kbet_out) {kbet_out$summary[1, ]}) %>%  -->
+<!--   do.call(rbind, .) %>%  -->
+<!--   rename(`Expected kBET` = kBET.expected, `Observed kBET` = kBET.observed, `p-value` = kBET.signif) %>% round(digits = 3) -->
+<!-- ``` -->
+
+<!-- # ML testing -->
+<!-- ```{r} -->
+<!-- feature_plotter(data_list, final_visits_covariates, names(data_list)) -->
+<!-- pca_plotter(data_list, final_visits_covariates, names(data_list)) -->
+<!-- umap_plotter(data_list, final_visits_covariates, names(data_list)) -->
+
+<!-- manufac_ml <- ml_cv_tester(data_list, 1:4, final_visits_covariates, -->
+<!--                            outcome = "manufac", repeats = 20) -->
+
+<!-- ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost") -->
+<!-- manufac_methods <- vector("list", length(data_list[1:4])) -->
+<!-- n_per_list <- nrow(manufac_ml) / length(data_list[1:4]) -->
+<!-- for (i in 1:length(data_list[1:4])) { -->
+<!--   start_ind <- ((i - 1) * n_per_list + 1) -->
+<!--   end_ind <- i * n_per_list -->
+<!--   manufac_methods[[i]] <- manufac_ml[start_ind:end_ind, ] -->
+<!-- } -->
+
+<!-- manufac_methods_df <- bind_rows(manufac_ml) %>% -->
+<!--   mutate(algorithm = as.factor(rep(ml_names, length(manufac_methods))), -->
+<!--          algorithm_releveled = fct_relevel(algorithm, -->
+<!--                                            "SVM (Radial)", "QDA", -->
+<!--                                            "KNN", "RF", "XGBoost"), -->
+<!--          harm_method = as.factor(rep(c("Raw", "ComBat", "CovBat", -->
+<!--                                        "DeepComBat"), -->
+<!--                                      each = length(ml_names))), -->
+<!--          harm_method_releveled = fct_relevel(harm_method, -->
+<!--                                              "Raw", "ComBat", "CovBat", -->
+<!--                                              "DeepComBat")) -->
+
+<!-- manufac_methods_df <- manufac_methods_df %>% -->
+<!--   group_by(algorithm_releveled, harm_method_releveled) %>% -->
+<!--   summarize(ROC = mean(validation_roc), -->
+<!--             ROCSD = sd(validation_roc) / 10 * 1.984) -->
+
+<!-- my_colors <- c("#1F78B4", "#B2DF8A", "#33A02C", "#CAB2D6") -->
+<!-- manufac_plot <- ggplot(manufac_methods_df, aes(x = algorithm_releveled, y = Accuracy, -->
+<!--                                                fill = harm_method_releveled)) + -->
+<!--   geom_bar(stat = "identity", position = position_dodge(.9)) + -->
+<!--   geom_hline(yintercept = 0.33, color = "red", linetype = "dashed") + -->
+<!--   geom_errorbar(aes(ymin = Accuracy - 1.984 * AccuracySD / sqrt(200), ymax = Accuracy + 1.984 * AccuracySD / sqrt(200)), -->
+<!--                 position = position_dodge(.9)) + -->
+<!--   scale_fill_manual(values = my_colors, name = "Methods") + -->
+<!--   coord_cartesian(ylim = c(0.33, 1)) + -->
+<!--   ggtitle("Batch") + -->
+<!--   xlab("Machine Learning Algorithm") + -->
+<!--   ylab("AUROC") + -->
+<!--   theme_minimal() + -->
+<!--   theme(panel.grid.major.x = element_blank(), -->
+<!--         panel.grid.minor.x = element_blank(), -->
+<!--         plot.title = element_text(hjust = 0.5)); manufac_plot -->
+<!-- ``` -->
 
 # Validation split/test
 ```{r}
 cv_vector <- sample(rep(1:10, nrow(final_visits_raw))[1:nrow(final_visits_raw)])
-
-lapply(1:10, function(i) {table(final_visits_covariates$Manufacturer[cv_vector == i])})
 
 cv_harmonization <- function(data, covariates, cv_vector, cv_id) {
   train_inds <- cv_vector != cv_id
@@ -249,7 +291,7 @@ pca_plotter(cv_data_list, final_visits_covariates, names(cv_data_list))
 umap_plotter(cv_data_list, final_visits_covariates, names(cv_data_list))
 
 cv_manufac_ml <- ml_cv_tester(cv_data_list, 1:5, final_visits_covariates, 
-                           outcome = "Manufacturer", repeats = 20)
+                              outcome = "Manufacturer", repeats = 20)
 
 ml_names <- c("RF", "SVM (Radial)", "KNN", "QDA", "XGBoost")
 cv_manufac_methods <- vector("list", length(cv_data_list[1:5]))
@@ -280,7 +322,7 @@ cv_manufac_methods_df <- bind_rows(cv_manufac_ml) %>%
 my_colors <- c("#1F78B4", "#B2DF8A", "#33A02C", "#CAB2D6")
 my_colors <- c("#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C", "#CAB2D6")
 cv_manufac_plot <- ggplot(rbind(manufac_methods_df, cv_manufac_methods_df), aes(x = algorithm_releveled, y = Accuracy, 
-                                               fill = harm_method_releveled)) + 
+                                                                                fill = harm_method_releveled)) + 
   geom_bar(stat = "identity", position = position_dodge(.9)) + 
   geom_hline(yintercept = 0.33, color = "red", linetype = "dashed") + 
   geom_errorbar(aes(ymin = Accuracy - 1.984 * AccuracySD / sqrt(200), ymax = Accuracy + 1.984 * AccuracySD / sqrt(200)), 

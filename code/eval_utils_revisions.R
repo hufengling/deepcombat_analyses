@@ -30,10 +30,7 @@ coord_flipper <- function(coord_list, flip_vec) {
 
 umap_plotter <- function(data_list, covariates, plot_names, 
                          n_neighbors = 20, n_epochs = 100,
-                         is_umap_coords = FALSE) {
-  # if (length(data_list) != 6) {
-  #   stop("Length of data_list must be 6")
-  # }
+                         is_umap_coords = FALSE, ...) {
   umap_plot_list <- vector("list", length(data_list))
   layout_cov_list <- vector("list", length(data_list))
   
@@ -41,7 +38,7 @@ umap_plotter <- function(data_list, covariates, plot_names,
   if (is_umap_coords) {
     for (i in 1:length(data_list)) {
       umap_plot_list[[i]] <- ggplot(data_list[[i]]) + 
-        geom_point(aes(`1`, `2`, color = manufac, shape = ".")) +
+        geom_point(aes(`1`, `2`, color = Manufacturer, shape = ".")) +
         xlab("UMAP 1") +
         ylab("UMAP 2") +
         labs(title = plot_names[i]) +
@@ -50,8 +47,7 @@ umap_plotter <- function(data_list, covariates, plot_names,
               plot.title = element_text(hjust = 0.5))
     }
     
-    return(ggarrange(plotlist = umap_plot_list, 
-                     ncol = 3, nrow = 2))
+    return(ggarrange(plotlist = umap_plot_list, ...))
   }
   
   # Calculate and plot UMAP
@@ -66,7 +62,7 @@ umap_plotter <- function(data_list, covariates, plot_names,
     
     layout_cov_list[[i]] <- layout_cov
     umap_plot_list[[i]] <- ggplot(layout_cov) + 
-      geom_point(aes(`1`, `2`, color = manufac, shape = ".")) +
+      geom_point(aes(`1`, `2`, color = Manufacturer, shape = ".")) +
       xlab("UMAP 1") +
       ylab("UMAP 2") +
       labs(title = plot_names[i]) +
@@ -75,12 +71,11 @@ umap_plotter <- function(data_list, covariates, plot_names,
             plot.title = element_text(hjust = 0.5))
     gc()
   }
-  return(list(plot = ggarrange(plotlist = umap_plot_list, 
-                               ncol = 3, nrow = 2),
+  return(list(plot = ggarrange(plotlist = umap_plot_list, ...),
               coords = layout_cov_list))
 }
 
-pca_plotter <- function(data_list, covariates, plot_names) {
+pca_plotter <- function(data_list, covariates, plot_names, ...) {
   # if (length(data_list) != 6) {
   #   stop("Length of data_list must be 6")
   # }
@@ -90,15 +85,14 @@ pca_plotter <- function(data_list, covariates, plot_names) {
   for (i in 1:length(data_list)) {
     tmp_pca <- princomp(data_list[[i]], cor = TRUE)
     
-    pca_plot_list[[i]] <- autoplot(tmp_pca, data = covariates, colour = "manufac", 
+    pca_plot_list[[i]] <- autoplot(tmp_pca, data = covariates, colour = "Manufacturer", 
                                    frame = TRUE, frame.type = 'norm') + 
       theme_classic() + 
       labs(title = plot_names[i]) +
       theme(legend.position = "none",
             plot.title = element_text(hjust = 0.5))
   }
-  return(ggarrange(plotlist = pca_plot_list, 
-                   ncol = 3, nrow = 2))
+  return(ggarrange(plotlist = pca_plot_list, ...))
 }
 
 cor_plotter <- function(data_list, covariates, plot_names) {
@@ -116,7 +110,7 @@ cor_plotter <- function(data_list, covariates, plot_names) {
   
   for (i in 1:length(data_list)) {
     # Correlation plots for Siemens
-    tmp_siemens <- cor(data_list[[i]][covariates$manufac == "True", ])[hclust_ordering, hclust_ordering]
+    tmp_siemens <- cor(data_list[[i]][covariates$Manufacturer == "True", ])[hclust_ordering, hclust_ordering]
     rownames(tmp_siemens) <- NULL
     colnames(tmp_siemens) <- NULL
     siemens_cor_list[[i]] <- autoplot(tmp_siemens) + 
@@ -130,7 +124,7 @@ cor_plotter <- function(data_list, covariates, plot_names) {
                             low = "white")
     
     # Correlation plots for Other
-    tmp_other <- cor(data_list[[i]][covariates$manufac == "False", ])[hclust_ordering, hclust_ordering]
+    tmp_other <- cor(data_list[[i]][covariates$Manufacturer == "False", ])[hclust_ordering, hclust_ordering]
     rownames(tmp_other) <- NULL
     colnames(tmp_other) <- NULL
     other_cor_list[[i]] <- autoplot(tmp_other) + 
@@ -161,7 +155,7 @@ cor_plotter <- function(data_list, covariates, plot_names) {
   cor_plots
 }
 
-feature_plotter <- function(data_list, covariates, plot_names, col_num = NULL) {
+feature_plotter <- function(data_list, covariates, plot_names, col_num = NULL, ...) {
   # if (length(data_list) != 6) {
   #   stop("Length of data_list must be 6")
   # }
@@ -171,24 +165,24 @@ feature_plotter <- function(data_list, covariates, plot_names, col_num = NULL) {
   }
   feature_plot_list <- vector("list", length(data_list))
   for (i in 1:length(data_list)) {
-    tmp_df <- as.data.frame(data_list[[i]][, col_num]) %>% cbind(covariates$manufac)
-    names(tmp_df) <- c("feature", "manufac")
-    tmp_df$manufac <- as.factor(tmp_df$manufac)
+    tmp_df <- as.data.frame(data_list[[i]][, col_num]) %>% cbind(covariates$Manufacturer)
+    names(tmp_df) <- c("feature", "Manufacturer")
+    tmp_df$Manufacturer <- as.factor(tmp_df$Manufacturer)
     feature_plot_list[[i]] <- ggplot(tmp_df) + 
-      geom_density(aes(feature, fill = manufac), alpha = 0.5) +
+      geom_density(aes(feature, fill = Manufacturer), alpha = 0.5) +
       theme_classic() +
       theme(legend.position = "none",
             plot.title = element_text(hjust = 0.5)) +
       labs(x = "", y = "", title = plot_names[i])
   }
   
-  ggarrange(plotlist = feature_plot_list, nrow = 2, ncol = 3)
+  ggarrange(plotlist = feature_plot_list, ...)
 }
 
 stats_tester <- function(data_list, covariates, nboots = 5000, raw_null = FALSE) {
   p_summary <- as.data.frame(matrix(rep(0, 21 * length(data_list)), nrow = length(data_list)))
   manova_df <- as.data.frame(matrix(rep(0, 9 * length(data_list)), nrow = length(data_list)))
-  ad_df <- as.data.frame(matrix(rep(0, 13 * length(data_list)), nrow = length(data_list)))
+  ad_df <- as.data.frame(matrix(rep(0, 5 * length(data_list)), nrow = length(data_list)))
   
   lr_p <- vector("list", length(data_list))
   ad_p <- vector("list", length(data_list))
@@ -200,7 +194,7 @@ stats_tester <- function(data_list, covariates, nboots = 5000, raw_null = FALSE)
   
   for (i in 1:length(data_list)) {
     # Univariate linear regression
-    mod_mat <- summary(lm(as.matrix(data_list[[i]]) ~ AGE + SEX + DIAGNOSIS + manufac, 
+    mod_mat <- summary(lm(as.matrix(data_list[[i]]) ~ AGE + SEX + DIAGNOSIS + Manufacturer, 
                           data = covariates))
     p_vals <- sapply(mod_mat, function(mod) {
       mod$coefficients[-1, 4]
@@ -208,7 +202,7 @@ stats_tester <- function(data_list, covariates, nboots = 5000, raw_null = FALSE)
     p_vals <- p_vals[-nrow(p_vals), ]
     
     for (j in 1:ncol(data_list[[i]])) {
-      mod_mat <- lm(as.matrix(data_list[[i]][, j]) ~ AGE + SEX + DIAGNOSIS + manufac, 
+      mod_mat <- lm(as.matrix(data_list[[i]][, j]) ~ AGE + SEX + DIAGNOSIS + Manufacturer, 
                     data = covariates)
       mod_mat_reduced <- lm(as.matrix(data_list[[i]][, j]) ~ AGE + SEX + DIAGNOSIS, 
                             data = covariates)
@@ -225,49 +219,42 @@ stats_tester <- function(data_list, covariates, nboots = 5000, raw_null = FALSE)
                         mean_log_p, sd_log_p)
     
     # Multivariate MANOVA
-    tmp_manova <- summary(manova(as.matrix(data_list[[i]]) ~ AGE + SEX + DIAGNOSIS + manufac, 
+    tmp_manova <- summary(manova(as.matrix(data_list[[i]]) ~ AGE + SEX + DIAGNOSIS + Manufacturer, 
                                  data = covariates))$stats
     manova_df[i, ] <- c(as.data.frame(names(data_list)[[i]]), 
                         tmp_manova[-5, 6], 
                         log(tmp_manova[-5, 6], base = 10))
     
     # Univariate Anderson-Darling
-    ad_a <- data_list[[i]][covariates$manufac == "GE MEDICAL SYSTEMS", ]
-    ad_b <- data_list[[i]][covariates$manufac == "Philips Medical Systems", ]
-    ad_c <- data_list[[i]][covariates$manufac == "SIEMENS", ]
+    ad_a <- data_list[[i]][covariates$Manufacturer == "GE MEDICAL SYSTEMS", ]
+    ad_b <- data_list[[i]][covariates$Manufacturer == "Philips Medical Systems", ]
+    ad_c <- data_list[[i]][covariates$Manufacturer == "SIEMENS", ]
     tmp_ad_ab <- rep(0, ncol(data_list[[i]]))
     tmp_ad_ac <- rep(0, ncol(data_list[[i]]))
     tmp_ad_bc <- rep(0, ncol(data_list[[i]]))
     for (j in 1:ncol(data_list[[i]])) {
       tmp_ad_ab[j] <- ad_test(ad_a[, j], ad_b[, j], 
-                                 keep.boots = F, nboots = nboots)[2]
+                              keep.boots = F, nboots = nboots)[2]
       tmp_ad_ac[j] <- ad_test(ad_a[, j], ad_c[, j], 
                               keep.boots = F, nboots = nboots)[2]
       tmp_ad_bc[j] <- ad_test(ad_b[, j], ad_c[, j], 
                               keep.boots = F, nboots = nboots)[2]
     }
-    ad_p[[i]] <- tmp_ad_ab
+    ad_pvals <- c(tmp_ad_ab, tmp_ad_ac, tmp_ad_bc)
+    ad_p[[i]] <- ad_pvals
     ad_df[i, ] <- c(as.data.frame(names(data_list)[[i]]), 
-                    mean(tmp_ad_ab), 
-                    sd(tmp_ad_ab),
-                    mean(tmp_ad_ac), 
-                    sd(tmp_ad_ac),
-                    mean(tmp_ad_bc), 
-                    sd(tmp_ad_bc),
-                    mean(log(tmp_ad_ab, base = 10), na.rm = T), 
-                    sd(log(tmp_ad_ab, base = 10), na.rm = T),
-                    mean(log(tmp_ad_ac, base = 10), na.rm = T), 
-                    sd(log(tmp_ad_ac, base = 10), na.rm = T),
-                    mean(log(tmp_ad_bc, base = 10), na.rm = T), 
-                    sd(log(tmp_ad_bc, base = 10), na.rm = T))
+                    mean(ad_pvals), 
+                    sd(ad_pvals),
+                    mean(log(ad_pvals, base = 10), na.rm = T), 
+                    sd(log(ad_pvals, base = 10), na.rm = T))
     
   }
   colnames(p_summary) <- c("dataset", names(mean_p), paste0(names(mean_p), "_SD"),
                            paste0(names(mean_p), "_log"), paste0(names(mean_p), "_log_SD"))
   colnames(manova_df) <- c("dataset", names(tmp_manova[-5, 6]), paste0(names(tmp_manova[-5, 6]), "_log"))
   colnames(ad_df) <- c("dataset", 
-                       "ab", "ab_SD", "ac", "ac_SD", "bc", "bc_SD",
-                       "ab_log", "ab_log_SD", "ac_log", "ac_log_SD", "bc_log", "bc_log_SD")
+                       "pval", "pval_SD",
+                       "pval_log", "pval_log_SD")
   
   
   return(list("lr" = p_summary, "manova" = manova_df, "ad" = ad_df,
@@ -311,31 +298,33 @@ ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "M
   }
   
   data_results <- lapply(tmp_list, function(item) {
+    if (verbose)
+      print(name(item))
     if (outcome == "SEX") {
       tmp_rf <- caret::train(outcome ~ ., data = item, method = "rf",
-                      trControl = tc,
-                      tuneGrid = data.frame(.mtry = 20),
-                      metric = "ROC")$results
+                             trControl = tc,
+                             tuneGrid = data.frame(.mtry = 20),
+                             metric = "ROC")$results
       tmp_svm <- caret::train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.sigma = 1/62, .C = 1),
-                       metric = "ROC")$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.sigma = 1/62, .C = 1),
+                              metric = "ROC")$results
       tmp_knn <- caret::train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.k = 5),
-                       metric = "ROC")$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.k = 5),
+                              metric = "ROC")$results
       tmp_qda <- caret::train(outcome ~ ., data = item, method = "qda", 
-                       trControl = tc, metric = "ROC")$results
+                              trControl = tc, metric = "ROC")$results
       tmp_xgb <- caret::train(outcome ~ ., data = item, method = "xgbTree",
-                       trControl = tc,
-                       tuneGrid = data.frame(.nrounds = 100,
-                                             .max_depth = 6,
-                                             .eta = 0.1,
-                                             .gamma = 0,
-                                             .colsample_bytree = .5,
-                                             .min_child_weight = 1,
-                                             .subsample = 1),
-                       metric = "ROC")$results
+                              trControl = tc,
+                              tuneGrid = data.frame(.nrounds = 100,
+                                                    .max_depth = 6,
+                                                    .eta = 0.1,
+                                                    .gamma = 0,
+                                                    .colsample_bytree = .5,
+                                                    .min_child_weight = 1,
+                                                    .subsample = 1),
+                              metric = "ROC")$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 5):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 5):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 5):length(tmp_knn)],
@@ -346,25 +335,25 @@ ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "M
     
     if (outcome %in% c("DIAGNOSIS", "Manufacturer")) {
       tmp_rf <- caret::train(outcome ~ ., data = item, method = "rf", 
-                      trControl = tc, 
-                      tuneGrid = data.frame(.mtry = 20))$results
+                             trControl = tc, 
+                             tuneGrid = data.frame(.mtry = 20))$results
       tmp_svm <- caret::train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
       tmp_knn <- caret::train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.k = 5))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.k = 5))$results
       tmp_qda <- caret::train(outcome ~ ., data = item, method = "qda", 
-                       trControl = tc)$results
+                              trControl = tc)$results
       tmp_xgb <- caret::train(outcome ~ ., data = item, method = "xgbTree",
-                       trControl = tc, 
-                       tuneGrid = data.frame(.nrounds = 100, 
-                                             .max_depth = 6, 
-                                             .eta = 0.1, 
-                                             .gamma = 0, 
-                                             .colsample_bytree = .5,
-                                             .min_child_weight = 1, 
-                                             .subsample = .75))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.nrounds = 100, 
+                                                    .max_depth = 6, 
+                                                    .eta = 0.1, 
+                                                    .gamma = 0, 
+                                                    .colsample_bytree = .5,
+                                                    .min_child_weight = 1, 
+                                                    .subsample = .75))$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 3):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 3):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 3):length(tmp_knn)],
@@ -375,23 +364,23 @@ ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "M
     
     if (outcome == "AGE") {
       tmp_rf <- caret::train(outcome ~ ., data = item, method = "rf", 
-                      trControl = tc, 
-                      tuneGrid = data.frame(.mtry = 20))$results
+                             trControl = tc, 
+                             tuneGrid = data.frame(.mtry = 20))$results
       tmp_svm <- caret::train(outcome ~ ., data = item, method = "svmRadial", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.sigma = 1/62, .C = 1))$results
       tmp_knn <- caret::train(outcome ~ ., data = item, method = "knn", 
-                       trControl = tc, 
-                       tuneGrid = data.frame(.k = 5))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.k = 5))$results
       tmp_xgb <- caret::train(outcome ~ ., data = item, method = "xgbTree",
-                       trControl = tc, 
-                       tuneGrid = data.frame(.nrounds = 100, 
-                                             .max_depth = 6, 
-                                             .eta = 0.1, 
-                                             .gamma = 0, 
-                                             .colsample_bytree = .5,
-                                             .min_child_weight = 1, 
-                                             .subsample = .75))$results
+                              trControl = tc, 
+                              tuneGrid = data.frame(.nrounds = 100, 
+                                                    .max_depth = 6, 
+                                                    .eta = 0.1, 
+                                                    .gamma = 0, 
+                                                    .colsample_bytree = .5,
+                                                    .min_child_weight = 1, 
+                                                    .subsample = .75))$results
       tmp_results <- rbind(tmp_rf[(length(tmp_rf) - 5):length(tmp_rf)],
                            tmp_svm[(length(tmp_svm) - 5):length(tmp_svm)],
                            tmp_knn[(length(tmp_knn) - 5):length(tmp_knn)],
@@ -408,7 +397,7 @@ ml_cv_tester <- function(data_list, ml_interval = NULL, covariates, outcome = "M
 }
 
 plot_against_raw <- function(data_list, raw, plot_names, 
-                             col_num = 10, row_num = 200) {
+                             col_num = 10, row_num = 200, ...) {
   sample_cols <- sample(1:ncol(raw), col_num)
   sample_rows <- sample(1:nrow(raw), row_num)
   
@@ -435,8 +424,7 @@ plot_against_raw <- function(data_list, raw, plot_names,
       scale_color_brewer(palette = "Paired")
   }
   
-  ggarrange(plotlist = against_raw_list, 
-            ncol = 3, nrow = 2)
+  ggarrange(plotlist = against_raw_list, ...)
 }
 gg_qqplot <- function(ps, ci = 0.95, test) {
   n  <- length(ps)
@@ -471,7 +459,7 @@ plot_p_distributions <- function(manufac_stats,
                                  index_range, plot_names, 
                                  test = c("lr", "ad"), y_scale = c(NA, NA, NA), 
                                  use_neg_log = FALSE, 
-                                 plot_type = c("density", "qq")) {
+                                 plot_type = c("density", "qq"), ...) {
   if (test == "lr") {
     p_dist_df <- manufac_stats$lr_p[index_range]
   }
@@ -486,51 +474,53 @@ plot_p_distributions <- function(manufac_stats,
   }
   
   p_dist_list <- sapply(1:length(p_dist_df), function(i) {
-    if (test == "lr")
+    if (test == "lr") {
       tmp <- as.data.frame(t(p_dist_df[[i]]))
+      names(tmp) <- c("age", "sex", "diagnosiscn", "diagnosislmci", "batch")
+    }
     if (test == "ad") {
       tmp <- as.data.frame(p_dist_df[[i]])
-      names(tmp) <- "manufacTrue"
+      names(tmp) <- "batch"
     }
     tmp
   }, simplify = FALSE)
   
   p_plot_list <- vector("list", length(p_dist_list))
-  if (plot_type == "density") {
-    for (i in 1:length(p_dist_list)) {
-      p_plot_list[[i]] <- ggplot(p_dist_list[[i]], aes(x = manufacTrue)) +
-        geom_density() +
-        ylab("Density") + 
-        xlim(0, 1) +
-        theme_classic() + 
-        labs(title = plot_names[i]) + 
-        theme(legend.position="none",
-              plot.title = element_text(hjust = 0.5))
-      if (test == "lr") {
-        p_plot_list[[i]] <- p_plot_list[[i]] + 
-          xlab("Regression p-value")
-      }
-      if (test == "ad") {
-        p_plot_list[[i]] <- p_plot_list[[i]] + 
-          xlab("Anderson-Darling p-value")
-      }
-      if (!is.na(y_scale[1])) {
-        if (i == 1)
-          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[1])
-      }
-      if (!is.na(y_scale[2])) {
-        if (i %in% c(2, 3, 6))
-          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[2])
-      }
-      if (!is.na(y_scale[3])) {
-        if (i %in% c(4, 5))
-          p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[3])
-      }
-    }
-  }
+  # if (plot_type == "density") {
+  #   for (i in 1:length(p_dist_list)) {
+  #     p_plot_list[[i]] <- ggplot(p_dist_list[[i]], aes(x = manufacTrue)) +
+  #       geom_density() +
+  #       ylab("Density") + 
+  #       xlim(0, 1) +
+  #       theme_classic() + 
+  #       labs(title = plot_names[i]) + 
+  #       theme(legend.position="none",
+  #             plot.title = element_text(hjust = 0.5))
+  #     if (test == "lr") {
+  #       p_plot_list[[i]] <- p_plot_list[[i]] + 
+  #         xlab("Regression p-value")
+  #     }
+  #     if (test == "ad") {
+  #       p_plot_list[[i]] <- p_plot_list[[i]] + 
+  #         xlab("Anderson-Darling p-value")
+  #     }
+  #     if (!is.na(y_scale[1])) {
+  #       if (i == 1)
+  #         p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[1])
+  #     }
+  #     if (!is.na(y_scale[2])) {
+  #       if (i %in% c(2, 3, 6))
+  #         p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[2])
+  #     }
+  #     if (!is.na(y_scale[3])) {
+  #       if (i %in% c(4, 5))
+  #         p_plot_list[[i]] <- p_plot_list[[i]] + ylim(0, y_scale[3])
+  #     }
+  #   }
+  # }
   if (plot_type == "qq") {
     for (i in 1:length(p_dist_list)) {
-      p_plot_list[[i]] <- gg_qqplot(p_dist_list[[i]]$manufacTrue, test = test) +
+      p_plot_list[[i]] <- gg_qqplot(p_dist_list[[i]]$batch, test = test) +
         theme_classic() +
         labs(title = plot_names[i]) +
         theme(plot.title = element_text(hjust = 0.5))
@@ -549,6 +539,5 @@ plot_p_distributions <- function(manufac_stats,
       }
     }
   }
-  ggarrange(plotlist = p_plot_list, 
-            ncol = 3, nrow = 2)
+  ggarrange(plotlist = p_plot_list, ...)
 }
